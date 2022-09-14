@@ -9,7 +9,7 @@
     FFT mSpec;
 
     public ACF(int size) {
-        MIN = Math.Pow(10, -140 / 20.0);
+        MIN = Math.Pow(10, -155 / 20.0);
         mRe = new double[size];
         mIm = new double[size];
         mFFT = new FFT(size);
@@ -21,9 +21,7 @@
 
     void exec(double[] input, double[] output) {
         var N = mRe.Length;
-        for (int i = 0; i < N; i++) {
-            mRe[i] = input[i] * (0.5 - 0.5 * Math.Cos(2 * Math.PI * i / N));
-        }
+        Array.Copy(input, 0, mRe, 0, N);
         Array.Clear(mIm);
         mFFT.Exec(mRe, mIm);
         for (int i = 0; i < N; i++) {
@@ -37,7 +35,7 @@
             baseV = MIN;
         }
         for (int i = 0, j = N / 2; i < N / 2; i++, j++) {
-            output[j] = output[i] / baseV * Math.Cos(Math.PI * i / N);
+            output[j] = output[i] / baseV * (0.5 + 0.5 * Math.Cos(2 * Math.PI * i / N));
         }
         for (int i = N / 2 - 1, j = N / 2; j < N; i--, j++) {
             output[i] = output[j];
@@ -45,9 +43,10 @@
     }
 
     public void ExecN(double[] input, double[] output, int n = 1) {
+        var N = output.Length;
         exec(input, output);
         for (int i = 1; i < n; i++) {
-            Array.Copy(output, 0, mRe2, 0, output.Length);
+            Array.Copy(output, 0, mRe2, 0, N);
             exec(mRe2, output);
         }
     }
@@ -64,7 +63,7 @@
             if (re < MIN) {
                 re = MIN;
             }
-            output[i] = 20 * Math.Log10(re);
+            output[i] = 20 * Math.Log10(re) + 15;
         }
     }
 }

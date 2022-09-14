@@ -1,18 +1,22 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 100;
-        const int DATA_N = 4096;
-        
-        ACF mAcfL1 = new ACF(DATA_N);
-        double[] mAcf = new double[DATA_N];
-        double[] mAcfSpec = new double[DATA_N];
-        double[] mInput = new double[DATA_N];
+        const int RANGE_DB = 24;
+        const int FFT_N = 8192;
+        const int READ_LEN = 441;
+        ACF mAcfL1 = new ACF(FFT_N);
+        double[] mAcf = new double[FFT_N];
+        double[] mAcfSpec = new double[FFT_N];
+        double[] mInput = new double[FFT_N];
         double mOscCount1 = 0.0;
         double mOscCount2 = 0.0;
+        double mAcfScale = 0.125;
+        int mPos = 0;
         bool mSetSize = false;
 
         readonly Pen GRID_MAJOR = new Pen(Color.FromArgb(127, 0, 0), 1.0f);
-        readonly Pen GRID_MINOR = new Pen(Color.FromArgb(63, 0, 0), 1.0f);
+        readonly Pen GRID_MINOR = new Pen(Color.FromArgb(79, 0, 0), 1.0f) {
+            DashPattern = new float[] { 3, 2 }
+        };
 
         public Form1() {
             InitializeComponent();
@@ -60,7 +64,14 @@ namespace SubBandForm {
             return (int)((0.5 - v * amp * 0.5) * height + offset);
         }
 
-        int getYdb(double v, int height, int offset) {
+        int dbToLiner(double v, int height) {
+            if (0 < v) {
+                v = 0;
+            }
+            return (int)(-Math.Pow(10, v / 20.0) * height);
+        }
+
+        int dbToY(double v, int height, int offset) {
             if (0 < v) {
                 v = 0;
             }
@@ -72,8 +83,8 @@ namespace SubBandForm {
 
         void calc() {
             var oscAmp1 = Math.Pow(10, 0 / 20.0);
-            var oscAmp2 = Math.Pow(10, -6 / 20.0);
-            for (int i = 0; i < DATA_N; i++) {
+            var oscAmp2 = Math.Pow(10, 0 / 20.0);
+            for (int i = 0; i < READ_LEN; i++) {
                 var tmp = 0.0;
                 for (int o = 0; o < 16; o++) {
                     if (mOscCount1 < 0.5) {
@@ -88,8 +99,8 @@ namespace SubBandForm {
                     }
                     //tmp += Math.Sin(2 * Math.PI * mOscCount1) * oscAmp1;
                     //tmp += Math.Sin(2 * Math.PI * mOscCount2) * oscAmp2;
-                    mOscCount1 += 100 / (44100 * 16.0);
-                    mOscCount2 += 450 / (44100 * 16.0);
+                    mOscCount1 += 50 / (44100 * 16.0);
+                    mOscCount2 += 1000 / (44100 * 16.0);
                     if (1.0 <= mOscCount1) {
                         mOscCount1 -= 1.0;
                     }
@@ -97,22 +108,27 @@ namespace SubBandForm {
                         mOscCount2 -= 1.0;
                     }
                 }
-                mInput[i] = tmp;
+                if (FFT_N <= mPos + i) {
+                    mPos -= FFT_N;
+                }
+                mInput[mPos + i] = tmp;
             }
-            mAcfL1.ExecN(mInput, mAcf, 2);
+            mAcfL1.ExecN(mInput, mAcf, 3);
             mAcfL1.Spec(mAcf, mAcfSpec);
+            mPos += READ_LEN;
         }
 
         void drawWave(Graphics g, double[] arr, double amp, double size, int height, int offset) {
             var width = pictureBox1.Width;
-            var centerY = offset + height / 2;
-            for (float yp = 0.0f, ym = 0.0f; yp < height / 2; yp += height / 20.0f, ym -= height / 20.0f) {
-                if (yp == 0.0f) {
-                    g.DrawLine(GRID_MAJOR, 0, yp + centerY, width - 1, yp + centerY);
-                } else {
-                    g.DrawLine(GRID_MINOR, 0, yp + centerY, width - 1, yp + centerY);
-                    g.DrawLine(GRID_MINOR, 0, ym + centerY, width - 1, ym + centerY);
-                }
+            var centerY = height / 2;
+            g.DrawLine(GRID_MAJOR, width / 2 + 1, offset, width / 2 + 1, offset + height);
+            g.DrawLine(GRID_MAJOR, 0, centerY, width - 1, centerY);
+            for (float ydb = -3.0f; -12 <= ydb; ydb -= 3.0f) {
+                var y = dbToLiner(ydb, height) / 2;
+                var yp = centerY + offset + y;
+                var ym = centerY + offset - y;
+                g.DrawLine(GRID_MINOR, 0, yp, width - 1, yp);
+                g.DrawLine(GRID_MINOR, 0, ym, width - 1, ym);
             }
             var gp = (double)arr.Length / width * size;
             var x0 = 0;
@@ -146,17 +162,21 @@ namespace SubBandForm {
         void drawSpec(Graphics g, double[] arr, int height, int offset) {
             var width = pictureBox1.Width;
             var x0 = 0;
-            var y0 = getYdb(arr[0], height, offset);
+            var y0 = dbToY(arr[0], height, offset);
             int y1;
             var gx0 = 0.0;
-            for (int db = 0; -RANGE_DB < db; db -= RANGE_DB / 5) {
-                var py = getYdb(db, height, offset);
-                g.DrawLine(GRID_MAJOR, 0, py, width - 1, py);
+            for (int db = 0; -RANGE_DB < db; db -= 3) {
+                var py = dbToY(db, height, offset);
+                if (db % 12 == 0) {
+                    g.DrawLine(GRID_MAJOR, 0, py, width - 1, py);
+                } else {
+                    g.DrawLine(GRID_MINOR, 0, py, width - 1, py);
+                }
             }
             for (int x1 = 0; x1 < width; x1++) {
                 var gx1 = Math.Pow(arr.Length / 10.0, (double)x1 / width - 1) * (arr.Length - 1);
                 if (1.0 < gx1 - gx0) {
-                    y1 = getYdb(arr[(int)gx0], height, offset);
+                    y1 = dbToY(arr[(int)gx0] * mAcfScale, height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                     var max = double.MinValue;
                     var min = double.MaxValue;
@@ -165,10 +185,10 @@ namespace SubBandForm {
                         min = Math.Min(min, v);
                         max = Math.Max(max, v);
                     }
-                    g.DrawLine(Pens.Green, x1, getYdb(min, height, offset), x1, getYdb(max, height, offset));
-                    y1 = getYdb(arr[(int)gx1], height, offset);
+                    g.DrawLine(Pens.Green, x1, dbToY(min * mAcfScale, height, offset), x1, dbToY(max * mAcfScale, height, offset));
+                    y1 = dbToY(arr[(int)gx1] * mAcfScale, height, offset);
                 } else {
-                    y1 = getYdb(arr[(int)gx1], height, offset);
+                    y1 = dbToY(arr[(int)gx1] * mAcfScale, height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                 }
                 x0 = x1;
