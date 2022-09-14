@@ -82,9 +82,9 @@ namespace SubBandForm {
         }
 
         void calc() {
-            var oscAmp1 = Math.Pow(10, -6 / 20.0);
-            var oscAmp2 = Math.Pow(10, 0 / 20.0);
-            var oscAmp3 = Math.Pow(10, -6 / 20.0);
+            var oscAmp1 = Math.Pow(10, 0 / 20.0);
+            var oscAmp2 = Math.Pow(10, -9 / 20.0);
+            var oscAmp3 = Math.Pow(10, -9 / 20.0);
             for (int i = 0; i < READ_LEN; i++) {
                 var tmp = 0.0;
                 for (int o = 0; o < 16; o++) {
@@ -104,7 +104,7 @@ namespace SubBandForm {
                         tmp -= oscAmp3;
                     }
                     mOscCount1 += 100 / (44100 * 16.0);
-                    mOscCount2 += 450 / (44100 * 16.0);
+                    mOscCount2 += 620 / (44100 * 16.0);
                     mOscCount3 += 2200 / (44100 * 16.0);
                     if (1.0 <= mOscCount1) {
                         mOscCount1 -= 1.0;
