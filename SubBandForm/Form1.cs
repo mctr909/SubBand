@@ -6,11 +6,11 @@ namespace SubBandForm {
         ACF mAcfL1 = new ACF(FFT_N);
         double[] mAcf = new double[FFT_N];
         double[] mAcfSpec = new double[FFT_N];
+        double[] mReadBuff = new double[READ_LEN];
         double[] mInput = new double[FFT_N];
         double mOscCount1 = 0.0;
         double mOscCount2 = 0.0;
-        double mAcfScale = 0.125;
-        int mPos = 0;
+        double mOscCount3 = 0.0;
         bool mSetSize = false;
 
         readonly Pen GRID_MAJOR = new Pen(Color.FromArgb(127, 0, 0), 1.0f);
@@ -41,8 +41,8 @@ namespace SubBandForm {
             var g = Graphics.FromImage(pictureBox1.Image);
             g.Clear(Color.Black);
             var gheight = pictureBox1.Height / 2;
-            drawWave(g, mAcf, 1.0, 1.0, gheight, 0);
-            drawSpec(g, mAcfSpec, gheight, gheight);
+            drawWave(g, mAcf, 1.0, 3 / 8.0, 5 / 8.0, gheight, 0);
+            drawSpec(g, mAcfSpec, 0.25, gheight, gheight);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
@@ -82,8 +82,9 @@ namespace SubBandForm {
         }
 
         void calc() {
-            var oscAmp1 = Math.Pow(10, 0 / 20.0);
+            var oscAmp1 = Math.Pow(10, -6 / 20.0);
             var oscAmp2 = Math.Pow(10, 0 / 20.0);
+            var oscAmp3 = Math.Pow(10, -6 / 20.0);
             for (int i = 0; i < READ_LEN; i++) {
                 var tmp = 0.0;
                 for (int o = 0; o < 16; o++) {
@@ -97,28 +98,33 @@ namespace SubBandForm {
                     } else {
                         tmp -= oscAmp2;
                     }
-                    //tmp += Math.Sin(2 * Math.PI * mOscCount1) * oscAmp1;
-                    //tmp += Math.Sin(2 * Math.PI * mOscCount2) * oscAmp2;
-                    mOscCount1 += 50 / (44100 * 16.0);
-                    mOscCount2 += 1000 / (44100 * 16.0);
+                    if (mOscCount3 < 0.5) {
+                        tmp += oscAmp3;
+                    } else {
+                        tmp -= oscAmp3;
+                    }
+                    mOscCount1 += 100 / (44100 * 16.0);
+                    mOscCount2 += 450 / (44100 * 16.0);
+                    mOscCount3 += 2200 / (44100 * 16.0);
                     if (1.0 <= mOscCount1) {
                         mOscCount1 -= 1.0;
                     }
                     if (1.0 <= mOscCount2) {
                         mOscCount2 -= 1.0;
                     }
+                    if (1.0 <= mOscCount3) {
+                        mOscCount3 -= 1.0;
+                    }
                 }
-                if (FFT_N <= mPos + i) {
-                    mPos -= FFT_N;
-                }
-                mInput[mPos + i] = tmp;
+                mReadBuff[i] = tmp;
             }
-            mAcfL1.ExecN(mInput, mAcf, 3);
+            Array.Copy(mInput, READ_LEN, mInput, 0, FFT_N - READ_LEN);
+            Array.Copy(mReadBuff, 0, mInput, FFT_N - READ_LEN, READ_LEN);
+            mAcfL1.ExecN(mInput, mAcf, 2);
             mAcfL1.Spec(mAcf, mAcfSpec);
-            mPos += READ_LEN;
         }
 
-        void drawWave(Graphics g, double[] arr, double amp, double size, int height, int offset) {
+        void drawWave(Graphics g, double[] arr, double amp, double begin, double end, int height, int offset) {
             var width = pictureBox1.Width;
             var centerY = height / 2;
             g.DrawLine(GRID_MAJOR, width / 2 + 1, offset, width / 2 + 1, offset + height);
@@ -130,27 +136,29 @@ namespace SubBandForm {
                 g.DrawLine(GRID_MINOR, 0, yp, width - 1, yp);
                 g.DrawLine(GRID_MINOR, 0, ym, width - 1, ym);
             }
-            var gp = (double)arr.Length / width * size;
+            var gPitch = (double)arr.Length / width;
+            var gBegin = begin * width * gPitch;
+            gPitch *= end - begin;
+            var gx0 = (int)gBegin;
             var x0 = 0;
-            var y0 = getY(arr[0], amp, height, offset);
+            var y0 = getY(arr[gx0], amp, height, offset);
             int y1;
-            var gx0 = 0.0;
             for (int x1 = 0; x1 < width; x1++) {
-                var gx1 = x1 * gp;
-                if (1.0 < gx1 - gx0) {
-                    y1 = getY(arr[(int)gx0], amp, height, offset);
+                var gx1 = (int)(x1 * gPitch + gBegin);
+                if (1 < gx1 - gx0) {
+                    y1 = getY(arr[gx0], amp, height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                     var max = double.MinValue;
                     var min = double.MaxValue;
-                    for (var i = (int)gx0; i <= gx1; i++) {
+                    for (var i = gx0; i <= gx1; i++) {
                         var v = arr[i];
                         min = Math.Min(min, v);
                         max = Math.Max(max, v);
                     }
                     g.DrawLine(Pens.Green, x1, getY(min, amp, height, offset), x1, getY(max, amp, height, offset));
-                    y1 = getY(arr[(int)gx1], amp, height, offset);
+                    y1 = getY(arr[gx1], amp, height, offset);
                 } else {
-                    y1 = getY(arr[(int)gx1], amp, height, offset);
+                    y1 = getY(arr[gx1], amp, height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                 }
                 x0 = x1;
@@ -159,12 +167,12 @@ namespace SubBandForm {
             }
         }
 
-        void drawSpec(Graphics g, double[] arr, int height, int offset) {
+        void drawSpec(Graphics g, double[] arr, double scale, int height, int offset) {
             var width = pictureBox1.Width;
+            var gx0 = (int)(Math.Pow(arr.Length / 10.0, -1) * (arr.Length - 1));
             var x0 = 0;
-            var y0 = dbToY(arr[0], height, offset);
+            var y0 = dbToY(arr[gx0] * scale, height, offset);
             int y1;
-            var gx0 = 0.0;
             for (int db = 0; -RANGE_DB < db; db -= 3) {
                 var py = dbToY(db, height, offset);
                 if (db % 12 == 0) {
@@ -174,21 +182,21 @@ namespace SubBandForm {
                 }
             }
             for (int x1 = 0; x1 < width; x1++) {
-                var gx1 = Math.Pow(arr.Length / 10.0, (double)x1 / width - 1) * (arr.Length - 1);
-                if (1.0 < gx1 - gx0) {
-                    y1 = dbToY(arr[(int)gx0] * mAcfScale, height, offset);
+                var gx1 = (int)(Math.Pow(arr.Length / 10.0, (double)x1 / width - 1) * (arr.Length - 1));
+                if (1 < gx1 - gx0) {
+                    y1 = dbToY(arr[gx0] * scale, height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                     var max = double.MinValue;
                     var min = double.MaxValue;
-                    for (var i = (int)gx0; i <= gx1; i++) {
-                        var v = arr[i];
+                    for (var i = gx0; i <= gx1; i++) {
+                        var v = arr[i] * scale;
                         min = Math.Min(min, v);
                         max = Math.Max(max, v);
                     }
-                    g.DrawLine(Pens.Green, x1, dbToY(min * mAcfScale, height, offset), x1, dbToY(max * mAcfScale, height, offset));
-                    y1 = dbToY(arr[(int)gx1] * mAcfScale, height, offset);
+                    g.DrawLine(Pens.Green, x1, dbToY(min, height, offset), x1, dbToY(max, height, offset));
+                    y1 = dbToY(arr[gx1] * scale, height, offset);
                 } else {
-                    y1 = dbToY(arr[(int)gx1] * mAcfScale, height, offset);
+                    y1 = dbToY(arr[gx1] * scale, height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                 }
                 x0 = x1;
