@@ -16,8 +16,8 @@
 	}
 	public void Exec(double[] real, double[] imag) {
 		int j = 0;
-		int n2 = real.Length / 2;
-		for (int i = 1; i < real.Length - 1; i++) {
+		int n2 = SIZE / 2;
+		for (int i = 1; i < SIZE - 1; i++) {
 			int n1 = n2;
 			while (j >= n1) {
 				j -= n1;
@@ -42,7 +42,7 @@
 				var c = COS[w];
 				var s = SIN[w];
 				w += 1 << (BITS - i - 1);
-				for (int k = j; k < real.Length; k += n2) {
+				for (int k = j; k < SIZE; k += n2) {
 					var t = k + n1;
 					var re = c * real[t] - s * imag[t];
 					var im = s * real[t] + c * imag[t];

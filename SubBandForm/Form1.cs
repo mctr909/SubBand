@@ -1,20 +1,19 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
+        const int RANGE_DB = 100;
         const int DATA_N = 4096;
-        const int DFT_N = 256;
-        const int DFT_NH = DFT_N / 2;
-        const int DFT_NQ1 = DFT_N / 4;
-        SubBand mSb1 = new SubBand(DFT_N);
-        ACF mAcfL = new ACF(DATA_N);
-        ACF mAcfH = new ACF(DATA_N);
-        double[] mOutAcfL = new double[DATA_N];
-        double[] mOutAcfH = new double[DATA_N];
-        double[] mOutL = new double[DATA_N];
-        double[] mOutH = new double[DATA_N];
-        double[] mInput = new double[DFT_NH];
-        double mOscCount = 0.0;
-        double mOscPitch = 4.0;
+        
+        ACF mAcfL1 = new ACF(DATA_N);
+        double[] mAcf = new double[DATA_N];
+        double[] mAcfSpec = new double[DATA_N];
+        double[] mInput = new double[DATA_N];
+        double mOscCount1 = 0.0;
+        double mOscCount2 = 0.0;
         bool mSetSize = false;
+
+        readonly Pen GRID_MAJOR = new Pen(Color.FromArgb(127, 0, 0), 1.0f);
+        readonly Pen GRID_MINOR = new Pen(Color.FromArgb(63, 0, 0), 1.0f);
+
         public Form1() {
             InitializeComponent();
         }
@@ -36,9 +35,10 @@ namespace SubBandForm {
             }
             calc();
             var g = Graphics.FromImage(pictureBox1.Image);
-            g.Clear(Color.Transparent);
-            draw(g, mOutAcfL, 0.5, pictureBox1.Height / 2, 0);
-            draw(g, mOutAcfH, 0.5, pictureBox1.Height / 2, pictureBox1.Height / 2);
+            g.Clear(Color.Black);
+            var gheight = pictureBox1.Height / 2;
+            drawWave(g, mAcf, 1.0, 1.0, gheight, 0);
+            drawSpec(g, mAcfSpec, gheight, gheight);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
@@ -56,55 +56,74 @@ namespace SubBandForm {
             pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
         }
 
-        int getY(double v, int height, int offset) {
-            return (int)((0.5 - 0.375 * v) * height + offset);
+        int getY(double v, double amp, int height, int offset) {
+            return (int)((0.5 - v * amp * 0.5) * height + offset);
+        }
+
+        int getYdb(double v, int height, int offset) {
+            if (0 < v) {
+                v = 0;
+            }
+            if (v < -RANGE_DB) {
+                v = -RANGE_DB;
+            }
+            return (int)(-v / RANGE_DB * height + offset);
         }
 
         void calc() {
-            for (int i = 0, k = 0; i < DATA_N; i += DFT_NH, k += DFT_NQ1) {
-                for (int j = 0; j < DFT_NH; j++) {
-                    var tmp = 0.0;
-                    for (int o = 0; o < 16; o++) {
-                        if (mOscCount < 0.5) {
-                            tmp += 1;
-                        } else {
-                            tmp -= 1;
-                        }
-                        mOscPitch = 4.0 + 12.0 * Math.Sin(mOscCount * 0.02);
-                        mOscCount += mOscPitch / (DATA_N * 16.0);
-                        if (1.0 <= mOscCount) {
-                            mOscCount -= 1.0;
-                        }
+            var oscAmp1 = Math.Pow(10, 0 / 20.0);
+            var oscAmp2 = Math.Pow(10, -6 / 20.0);
+            for (int i = 0; i < DATA_N; i++) {
+                var tmp = 0.0;
+                for (int o = 0; o < 16; o++) {
+                    if (mOscCount1 < 0.5) {
+                        tmp += oscAmp1;
+                    } else {
+                        tmp -= oscAmp1;
                     }
-                    mInput[j] = tmp / 16.0;
+                    if (mOscCount2 < 0.5) {
+                        tmp += oscAmp2;
+                    } else {
+                        tmp -= oscAmp2;
+                    }
+                    //tmp += Math.Sin(2 * Math.PI * mOscCount1) * oscAmp1;
+                    //tmp += Math.Sin(2 * Math.PI * mOscCount2) * oscAmp2;
+                    mOscCount1 += 100 / (44100 * 16.0);
+                    mOscCount2 += 450 / (44100 * 16.0);
+                    if (1.0 <= mOscCount1) {
+                        mOscCount1 -= 1.0;
+                    }
+                    if (1.0 <= mOscCount2) {
+                        mOscCount2 -= 1.0;
+                    }
                 }
-                mSb1.execute(ref mInput);
-                for (int j = 0; j < DFT_NQ1; j++) {
-                    mOutL[k + j] = mSb1.OutputL[j];
-                    mOutH[k + j] = mSb1.OutputH[j];
-                }
+                mInput[i] = tmp;
             }
-            mAcfL.Exec(mOutL, mOutAcfL);
-            mAcfH.Exec(mOutH, mOutAcfH);
-            var baseL = mOutAcfL[0];
-            var baseH = mOutAcfH[0];
-            for (int j = 0; j < DATA_N; j++) {
-                mOutAcfL[j] /= baseL;
-                mOutAcfH[j] /= baseH;
-            }
+            mAcfL1.ExecN(mInput, mAcf, 2);
+            mAcfL1.Spec(mAcf, mAcfSpec);
         }
 
-        void draw(Graphics g, double[] arr, double size, int height, int offset) {
-            var gp = (double)arr.Length / pictureBox1.Width * size;
+        void drawWave(Graphics g, double[] arr, double amp, double size, int height, int offset) {
+            var width = pictureBox1.Width;
+            var centerY = offset + height / 2;
+            for (float yp = 0.0f, ym = 0.0f; yp < height / 2; yp += height / 20.0f, ym -= height / 20.0f) {
+                if (yp == 0.0f) {
+                    g.DrawLine(GRID_MAJOR, 0, yp + centerY, width - 1, yp + centerY);
+                } else {
+                    g.DrawLine(GRID_MINOR, 0, yp + centerY, width - 1, yp + centerY);
+                    g.DrawLine(GRID_MINOR, 0, ym + centerY, width - 1, ym + centerY);
+                }
+            }
+            var gp = (double)arr.Length / width * size;
             var x0 = 0;
-            var y0 = 0;
+            var y0 = getY(arr[0], amp, height, offset);
             int y1;
             var gx0 = 0.0;
-            for (int x1 = 0; x1 < pictureBox1.Width; x1++) {
+            for (int x1 = 0; x1 < width; x1++) {
                 var gx1 = x1 * gp;
                 if (1.0 < gx1 - gx0) {
-                    y1 = getY(arr[(int)gx0], height, offset);
-                    g.DrawLine(Pens.Navy, x0, y0, x1, y1);
+                    y1 = getY(arr[(int)gx0], amp, height, offset);
+                    g.DrawLine(Pens.Green, x0, y0, x1, y1);
                     var max = double.MinValue;
                     var min = double.MaxValue;
                     for (var i = (int)gx0; i <= gx1; i++) {
@@ -112,11 +131,45 @@ namespace SubBandForm {
                         min = Math.Min(min, v);
                         max = Math.Max(max, v);
                     }
-                    g.DrawLine(Pens.Navy, x1, getY(min, height, offset), x1, getY(max, height, offset));
-                    y1 = getY(arr[(int)gx1], height, offset);
+                    g.DrawLine(Pens.Green, x1, getY(min, amp, height, offset), x1, getY(max, amp, height, offset));
+                    y1 = getY(arr[(int)gx1], amp, height, offset);
                 } else {
-                    y1 = getY(arr[(int)gx1], height, offset);
-                    g.DrawLine(Pens.Navy, x0, y0, x1, y1);
+                    y1 = getY(arr[(int)gx1], amp, height, offset);
+                    g.DrawLine(Pens.Green, x0, y0, x1, y1);
+                }
+                x0 = x1;
+                y0 = y1;
+                gx0 = gx1;
+            }
+        }
+
+        void drawSpec(Graphics g, double[] arr, int height, int offset) {
+            var width = pictureBox1.Width;
+            var x0 = 0;
+            var y0 = getYdb(arr[0], height, offset);
+            int y1;
+            var gx0 = 0.0;
+            for (int db = 0; -RANGE_DB < db; db -= RANGE_DB / 5) {
+                var py = getYdb(db, height, offset);
+                g.DrawLine(GRID_MAJOR, 0, py, width - 1, py);
+            }
+            for (int x1 = 0; x1 < width; x1++) {
+                var gx1 = Math.Pow(arr.Length / 10.0, (double)x1 / width - 1) * (arr.Length - 1);
+                if (1.0 < gx1 - gx0) {
+                    y1 = getYdb(arr[(int)gx0], height, offset);
+                    g.DrawLine(Pens.Green, x0, y0, x1, y1);
+                    var max = double.MinValue;
+                    var min = double.MaxValue;
+                    for (var i = (int)gx0; i <= gx1; i++) {
+                        var v = arr[i];
+                        min = Math.Min(min, v);
+                        max = Math.Max(max, v);
+                    }
+                    g.DrawLine(Pens.Green, x1, getYdb(min, height, offset), x1, getYdb(max, height, offset));
+                    y1 = getYdb(arr[(int)gx1], height, offset);
+                } else {
+                    y1 = getYdb(arr[(int)gx1], height, offset);
+                    g.DrawLine(Pens.Green, x0, y0, x1, y1);
                 }
                 x0 = x1;
                 y0 = y1;

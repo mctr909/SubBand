@@ -37,7 +37,7 @@
 		OutputH = new double[SIZE_Q];
 	}
 
-	public void execute(ref double[] input) {
+	public void Exec(double[] input) {
 		for (int i = 0, j = SIZE_H; i < SIZE_H; i++, j++) {
 			mInputBuff[i] = mInputBuff[j];
 			mInputBuff[j] = input[i];
