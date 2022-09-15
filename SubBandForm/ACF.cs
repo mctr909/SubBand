@@ -8,6 +8,7 @@
     FFT mFFT;
     FFT mIFFT;
     FFT mSpec;
+    double mBase;
 
     public ACF(int size) {
         MIN = Math.Pow(10, -200 / 20.0);
@@ -32,12 +33,12 @@
             output[i] = re;
         }
         mIFFT.Exec(output, mIm);
-        var baseV = output[0];
-        if (baseV < GATE) {
-            baseV = GATE;
+        mBase = output[0];
+        if (mBase < GATE) {
+            mBase = GATE;
         }
         for (int i = 0, j = N / 2; i < N / 2; i++, j++) {
-            output[j] = output[i] / baseV * (0.5 + 0.5 * Math.Cos(2 * Math.PI * i / N));
+            output[j] = output[i] / mBase * (0.5 + 0.5 * Math.Cos(2 * Math.PI * i / N));
         }
         for (int i = N / 2 - 1, j = N / 2; j < N; i--, j++) {
             output[i] = output[j];

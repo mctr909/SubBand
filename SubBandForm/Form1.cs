@@ -1,6 +1,6 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 48;
+        const int RANGE_DB = 96;
         bool mSetSize = false;
         WaveIn mWaveIn;
 
@@ -14,7 +14,7 @@ namespace SubBandForm {
         }
 
         private void Form1_Load(object sender, EventArgs e) {
-            mWaveIn = new WaveIn(44100, 8192, 512);
+            mWaveIn = new WaveIn(44100, 4096, 256);
             mSetSize = true;
             timer1.Enabled = true;
             timer1.Interval = 1;
@@ -34,7 +34,7 @@ namespace SubBandForm {
             var gheight = pictureBox1.Height / 2;
             mWaveIn.Read = true;
             drawWave(g, mWaveIn.Acf, 1.0, 3 / 8.0, 5 / 8.0, gheight, 0);
-            drawSpec(g, mWaveIn.AcfSpec, 0.5, gheight, gheight);
+            drawSpec(g, mWaveIn.AcfSpec, 1, gheight, gheight);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
@@ -53,7 +53,14 @@ namespace SubBandForm {
         }
 
         int getY(double v, double amp, int height, int offset) {
-            return (int)((0.5 - v * amp * 0.5) * height + offset);
+            amp = 0.5 - v * amp * 0.5;
+            if (amp < 0) {
+                amp = 0;
+            }
+            if (1 < amp) {
+                amp = 1;
+            }
+            return (int)(amp * height + offset);
         }
 
         int dbToLiner(double v, int height) {

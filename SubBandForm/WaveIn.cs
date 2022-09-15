@@ -8,7 +8,7 @@
     public double[] AcfSpec;
     public bool Read;
 
-    public WaveIn(int sampleRate, int fftSize, int bufferSize) : base(sampleRate, 1, bufferSize, 16, true) {
+    public WaveIn(int sampleRate, int fftSize, int bufferSize) : base(sampleRate, 1, bufferSize, 8, true) {
         READ_LEN = bufferSize;
         FFT_N = fftSize;
         mAcfL1 = new ACF(FFT_N);
@@ -25,10 +25,13 @@
         }
         if (Read) {
             for (int i = 0; i < FFT_N; i++) {
-                var t = (2.0 * i / FFT_N - 1.0) * 2;
-                mFftBuff[i] = mInput[i] * Math.Pow(Math.E, -t * t) * (0.5 - 0.5 * Math.Cos(2 * Math.PI * i / FFT_N));
+                mFftBuff[i] = mInput[i] * (0.5 - 0.5 * Math.Cos(2 * Math.PI * i / FFT_N));
             }
-            mAcfL1.ExecN(mFftBuff, Acf, 2);
+            mAcfL1.ExecN(mFftBuff, Acf);
+            for (int i = 0; i < FFT_N; i++) {
+                var t = (2.0 * i / FFT_N - 1.0) * 2;
+                Acf[i] *= Math.Pow(Math.E, -t * t);
+            }
             mAcfL1.Spec(Acf, AcfSpec);
             Read = false;
         }
