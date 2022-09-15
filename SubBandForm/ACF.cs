@@ -1,5 +1,6 @@
 ﻿class ACF {
     readonly double MIN;
+    readonly double GATE;
     double[] mRe;
     double[] mIm;
     double[] mRe2;
@@ -10,6 +11,7 @@
 
     public ACF(int size) {
         MIN = Math.Pow(10, -200 / 20.0);
+        GATE = Math.Pow(10, -48 / 20.0);
         mRe = new double[size];
         mIm = new double[size];
         mFFT = new FFT(size);
@@ -31,8 +33,8 @@
         }
         mIFFT.Exec(output, mIm);
         var baseV = output[0];
-        if (baseV < MIN) {
-            baseV = MIN;
+        if (baseV < GATE) {
+            baseV = GATE;
         }
         for (int i = 0, j = N / 2; i < N / 2; i++, j++) {
             output[j] = output[i] / baseV * (0.5 + 0.5 * Math.Cos(2 * Math.PI * i / N));

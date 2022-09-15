@@ -1,6 +1,6 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 24;
+        const int RANGE_DB = 48;
         bool mSetSize = false;
         WaveIn mWaveIn;
 
@@ -34,7 +34,7 @@ namespace SubBandForm {
             var gheight = pictureBox1.Height / 2;
             mWaveIn.Read = true;
             drawWave(g, mWaveIn.Acf, 1.0, 3 / 8.0, 5 / 8.0, gheight, 0);
-            drawSpec(g, mWaveIn.AcfSpec, 0.25, gheight, gheight);
+            drawSpec(g, mWaveIn.AcfSpec, 0.5, gheight, gheight);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
