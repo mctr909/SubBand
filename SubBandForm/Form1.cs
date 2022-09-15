@@ -1,17 +1,8 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
         const int RANGE_DB = 24;
-        const int FFT_N = 8192;
-        const int READ_LEN = 441;
-        ACF mAcfL1 = new ACF(FFT_N);
-        double[] mAcf = new double[FFT_N];
-        double[] mAcfSpec = new double[FFT_N];
-        double[] mReadBuff = new double[READ_LEN];
-        double[] mInput = new double[FFT_N];
-        double mOscCount1 = 0.0;
-        double mOscCount2 = 0.0;
-        double mOscCount3 = 0.0;
         bool mSetSize = false;
+        WaveIn mWaveIn;
 
         readonly Pen GRID_MAJOR = new Pen(Color.FromArgb(127, 0, 0), 1.0f);
         readonly Pen GRID_MINOR = new Pen(Color.FromArgb(79, 0, 0), 1.0f) {
@@ -23,9 +14,10 @@ namespace SubBandForm {
         }
 
         private void Form1_Load(object sender, EventArgs e) {
+            mWaveIn = new WaveIn(44100, 8192, 512);
             mSetSize = true;
             timer1.Enabled = true;
-            timer1.Interval = 16;
+            timer1.Interval = 1;
             timer1.Start();
         }
 
@@ -37,12 +29,12 @@ namespace SubBandForm {
             if (mSetSize) {
                 setSize();
             }
-            calc();
             var g = Graphics.FromImage(pictureBox1.Image);
             g.Clear(Color.Black);
             var gheight = pictureBox1.Height / 2;
-            drawWave(g, mAcf, 1.0, 3 / 8.0, 5 / 8.0, gheight, 0);
-            drawSpec(g, mAcfSpec, 0.25, gheight, gheight);
+            mWaveIn.Read = true;
+            drawWave(g, mWaveIn.Acf, 1.0, 3 / 8.0, 5 / 8.0, gheight, 0);
+            drawSpec(g, mWaveIn.AcfSpec, 0.25, gheight, gheight);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
@@ -79,49 +71,6 @@ namespace SubBandForm {
                 v = -RANGE_DB;
             }
             return (int)(-v / RANGE_DB * height + offset);
-        }
-
-        void calc() {
-            var oscAmp1 = Math.Pow(10, 0 / 20.0);
-            var oscAmp2 = Math.Pow(10, -9 / 20.0);
-            var oscAmp3 = Math.Pow(10, -9 / 20.0);
-            for (int i = 0; i < READ_LEN; i++) {
-                var tmp = 0.0;
-                for (int o = 0; o < 16; o++) {
-                    if (mOscCount1 < 0.5) {
-                        tmp += oscAmp1;
-                    } else {
-                        tmp -= oscAmp1;
-                    }
-                    if (mOscCount2 < 0.5) {
-                        tmp += oscAmp2;
-                    } else {
-                        tmp -= oscAmp2;
-                    }
-                    if (mOscCount3 < 0.5) {
-                        tmp += oscAmp3;
-                    } else {
-                        tmp -= oscAmp3;
-                    }
-                    mOscCount1 += 100 / (44100 * 16.0);
-                    mOscCount2 += 620 / (44100 * 16.0);
-                    mOscCount3 += 2200 / (44100 * 16.0);
-                    if (1.0 <= mOscCount1) {
-                        mOscCount1 -= 1.0;
-                    }
-                    if (1.0 <= mOscCount2) {
-                        mOscCount2 -= 1.0;
-                    }
-                    if (1.0 <= mOscCount3) {
-                        mOscCount3 -= 1.0;
-                    }
-                }
-                mReadBuff[i] = tmp;
-            }
-            Array.Copy(mInput, READ_LEN, mInput, 0, FFT_N - READ_LEN);
-            Array.Copy(mReadBuff, 0, mInput, FFT_N - READ_LEN, READ_LEN);
-            mAcfL1.ExecN(mInput, mAcf, 2);
-            mAcfL1.Spec(mAcf, mAcfSpec);
         }
 
         void drawWave(Graphics g, double[] arr, double amp, double begin, double end, int height, int offset) {
