@@ -1,8 +1,12 @@
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 96;
+        const int RANGE_DB = 60;
         bool mSetSize = false;
         WaveIn mWaveIn;
+        byte[] mPix;
 
         readonly Pen GRID_MAJOR = new Pen(Color.FromArgb(127, 0, 0), 1.0f);
         readonly Pen GRID_MINOR = new Pen(Color.FromArgb(79, 0, 0), 1.0f) {
@@ -15,8 +19,8 @@ namespace SubBandForm {
 
         private void Form1_Load(object sender, EventArgs e) {
             mWaveIn = new WaveIn(44100, 256, 8192);
-            mWaveIn.WindowWidth = 0.5;
-            mWaveIn.Gate = -36;
+            mWaveIn.WindowWidth = 0.375;
+            mWaveIn.Gate = 0;
             mSetSize = true;
             timer1.Enabled = true;
             timer1.Interval = 1;
@@ -33,10 +37,11 @@ namespace SubBandForm {
             }
             var g = Graphics.FromImage(pictureBox1.Image);
             g.Clear(Color.Black);
-            var gheight = pictureBox1.Height / 2;
+            var gheight = pictureBox1.Height;
             mWaveIn.Read = true;
-            drawWave(g, mWaveIn.Acf, 1.0, 3 / 8.0, 5 / 8.0, gheight, 0);
-            drawSpec(g, mWaveIn.AcfSpec, 1, gheight, gheight);
+            //drawWave(g, mWaveIn.Acf, 1.0, 1 / 4.0, 3 / 4.0, gheight, 0);
+            //drawSpec(g, mWaveIn.AcfSpec, 1, gheight, 0);
+            drawScrollSpec(mWaveIn.AcfSpec);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
@@ -51,7 +56,8 @@ namespace SubBandForm {
                 pictureBox1.Image.Dispose();
                 pictureBox1.Image = null;
             }
-            pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height);
+            pictureBox1.Image = new Bitmap(pictureBox1.Width, pictureBox1.Height, PixelFormat.Format32bppRgb);
+            mPix = new byte[4 * pictureBox1.Width * pictureBox1.Height];
         }
 
         int getY(double v, double amp, int height, int offset) {
@@ -80,6 +86,42 @@ namespace SubBandForm {
                 v = -RANGE_DB;
             }
             return (int)(-v / RANGE_DB * height + offset);
+        }
+
+        void dbToHue(byte[] pix, int offset, double v) {
+            if (0 < v) {
+                v = 0;
+            }
+            if (v < -RANGE_DB) {
+                v = -RANGE_DB;
+            }
+            v = RANGE_DB + v;
+            var g = (int)(v / RANGE_DB * 1279);
+            if (g < 256) {
+                pix[offset + 0] = (byte)g;
+                pix[offset + 1] = 0;
+                pix[offset + 2] = 0;
+            } else if (g < 512) {
+                g -= 256;
+                pix[offset + 0] = 255;
+                pix[offset + 1] = (byte)g;
+                pix[offset + 2] = 0;
+            } else if (g < 768) {
+                g -= 512;
+                pix[offset + 0] = (byte)(255 - g);
+                pix[offset + 1] = 255;
+                pix[offset + 2] = 0;
+            } else if (g < 1024) {
+                g -= 768;
+                pix[offset + 0] = 0;
+                pix[offset + 1] = 255;
+                pix[offset + 2] = (byte)g;
+            } else {
+                g -= 1024;
+                pix[offset + 0] = 0;
+                pix[offset + 1] = (byte)(255 - g);
+                pix[offset + 2] = 255;
+            }
         }
 
         void drawWave(Graphics g, double[] arr, double amp, double begin, double end, int height, int offset) {
@@ -161,6 +203,32 @@ namespace SubBandForm {
                 y0 = y1;
                 gx0 = gx1;
             }
+        }
+
+        void drawScrollSpec(double[] arr) {
+            var bmp = (Bitmap)pictureBox1.Image;
+            var rect = new Rectangle(Point.Empty, bmp.Size);
+            var bmpData = bmp.LockBits(rect, ImageLockMode.WriteOnly, bmp.PixelFormat);
+            var size = 4 * bmp.Width * bmp.Height;
+            Array.Copy(mPix, 0, mPix, bmpData.Stride, size - bmpData.Stride);
+            var gx0 = (int)(Math.Pow(arr.Length / 10.0, -1) * (arr.Length - 1));
+            for (int s = 0, x = 0; x < bmp.Width; s += 4, x++) {
+                var gx1 = (int)(Math.Pow(arr.Length / 10.0, (double)x / bmp.Width - 1) * (arr.Length - 1));
+                if (1 < gx1 - gx0) {
+                    dbToHue(mPix, s, arr[gx0]);
+                    var max = double.MinValue;
+                    for (var i = gx0; i <= gx1; i++) {
+                        var v = arr[i];
+                        max = Math.Max(max, v);
+                    }
+                    dbToHue(mPix, s, max);
+                } else {
+                    dbToHue(mPix, s, arr[gx1]);
+                }
+                gx0 = gx1;
+            }
+            Marshal.Copy(mPix, 0, bmpData.Scan0, size);
+            bmp.UnlockBits(bmpData);
         }
     }
 }

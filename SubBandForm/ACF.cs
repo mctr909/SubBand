@@ -71,7 +71,7 @@
             if (re < MIN) {
                 re = MIN;
             }
-            output[i] = 20 * Math.Log10(re);
+            output[i] = 20 * Math.Log10(re) + 20;
         }
     }
 }
