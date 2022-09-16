@@ -12,7 +12,7 @@
 
     public ACF(int size) {
         MIN = Math.Pow(10, -200 / 20.0);
-        GATE = Math.Pow(10, -48 / 20.0);
+        GATE = Math.Pow(10, -24 / 20.0);
         mRe = new double[size];
         mIm = new double[size];
         mFFT = new FFT(size);

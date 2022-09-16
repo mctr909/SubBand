@@ -1,6 +1,6 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 96;
+        const int RANGE_DB = 60;
         bool mSetSize = false;
         WaveIn mWaveIn;
 
@@ -85,7 +85,7 @@ namespace SubBandForm {
             var centerY = height / 2;
             g.DrawLine(GRID_MAJOR, width / 2 + 1, offset, width / 2 + 1, offset + height);
             g.DrawLine(GRID_MAJOR, 0, centerY, width - 1, centerY);
-            for (float ydb = -3.0f; -12 <= ydb; ydb -= 3.0f) {
+            for (float ydb = -3.0f; -24 <= ydb; ydb -= 3.0f) {
                 var y = dbToLiner(ydb, height) / 2;
                 var yp = centerY + offset + y;
                 var ym = centerY + offset - y;
