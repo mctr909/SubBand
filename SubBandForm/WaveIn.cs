@@ -1,6 +1,7 @@
 ﻿class WaveIn : WaveLib {
     readonly int FFT_N;
     readonly int READ_LEN;
+    readonly double SIGMA;
     ACF mAcfL1;
     double[] mInput;
     double[] mFftBuff;
@@ -8,9 +9,10 @@
     public double[] AcfSpec;
     public bool Read;
 
-    public WaveIn(int sampleRate, int fftSize, int bufferSize) : base(sampleRate, 1, bufferSize, 8, true) {
+    public WaveIn(int sampleRate, int bufferSize, int fftSize, double windowWidth = 1.0) : base(sampleRate, 1, bufferSize, 8, true) {
         READ_LEN = bufferSize;
         FFT_N = fftSize;
+        SIGMA = Math.Sqrt(Math.PI) / windowWidth;
         mAcfL1 = new ACF(FFT_N);
         mInput = new double[FFT_N];
         mFftBuff = new double[FFT_N];
@@ -25,8 +27,8 @@
         }
         if (Read) {
             for (int i = 0; i < FFT_N; i++) {
-                var t = (2.0 * i / FFT_N - 1.0) * 2;
-                mFftBuff[i] = mInput[i] * Math.Pow(Math.E, -t * t);
+                var ts = (2.0 * i / FFT_N - 1.0) * SIGMA;
+                mFftBuff[i] = mInput[i] * Math.Pow(Math.E, -ts * ts);
             }
             mAcfL1.ExecN(mFftBuff, Acf);
             mAcfL1.Spec(Acf, AcfSpec);

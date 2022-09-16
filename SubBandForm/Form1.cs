@@ -14,7 +14,7 @@ namespace SubBandForm {
         }
 
         private void Form1_Load(object sender, EventArgs e) {
-            mWaveIn = new WaveIn(44100, 4096, 256);
+            mWaveIn = new WaveIn(44100, 256, 8192, 0.5);
             mSetSize = true;
             timer1.Enabled = true;
             timer1.Interval = 1;
