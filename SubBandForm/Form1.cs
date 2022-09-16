@@ -1,6 +1,6 @@
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 60;
+        const int RANGE_DB = 96;
         bool mSetSize = false;
         WaveIn mWaveIn;
 
@@ -14,7 +14,9 @@ namespace SubBandForm {
         }
 
         private void Form1_Load(object sender, EventArgs e) {
-            mWaveIn = new WaveIn(44100, 256, 8192, 0.5);
+            mWaveIn = new WaveIn(44100, 256, 8192);
+            mWaveIn.WindowWidth = 0.5;
+            mWaveIn.Gate = -36;
             mSetSize = true;
             timer1.Enabled = true;
             timer1.Interval = 1;

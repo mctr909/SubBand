@@ -1,6 +1,6 @@
 ﻿class ACF {
     readonly double MIN;
-    readonly double GATE;
+    double mGate;
     double[] mRe;
     double[] mIm;
     double[] mRe2;
@@ -10,9 +10,14 @@
     FFT mSpec;
     double mBase;
 
+    public double Gate {
+        set { mGate = Math.Pow(10, value / 20.0); }
+        get { return 20 * Math.Log10(mGate); }
+    }
+
     public ACF(int size) {
         MIN = Math.Pow(10, -200 / 20.0);
-        GATE = Math.Pow(10, -24 / 20.0);
+        Gate = 0.0;
         mRe = new double[size];
         mIm = new double[size];
         mFFT = new FFT(size);
@@ -34,8 +39,8 @@
         }
         mIFFT.Exec(output, mIm);
         mBase = output[0];
-        if (mBase < GATE) {
-            mBase = GATE;
+        if (mBase < mGate) {
+            mBase = mGate;
         }
         for (int i = 0, j = N / 2; i < N / 2; i++, j++) {
             output[j] = output[i] / mBase * (0.5 + 0.5 * Math.Cos(2 * Math.PI * i / N));
@@ -66,7 +71,7 @@
             if (re < MIN) {
                 re = MIN;
             }
-            output[i] = 20 * Math.Log10(re) + 15;
+            output[i] = 20 * Math.Log10(re);
         }
     }
 }

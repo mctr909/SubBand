@@ -1,7 +1,7 @@
 ﻿class WaveIn : WaveLib {
     readonly int FFT_N;
     readonly int READ_LEN;
-    readonly double SIGMA;
+    double mSigma;
     ACF mAcfL1;
     double[] mInput;
     double[] mFftBuff;
@@ -9,10 +9,20 @@
     public double[] AcfSpec;
     public bool Read;
 
-    public WaveIn(int sampleRate, int bufferSize, int fftSize, double windowWidth = 1.0) : base(sampleRate, 1, bufferSize, 8, true) {
+    public double WindowWidth {
+        set { mSigma = Math.Sqrt(Math.PI) / value; }
+        get { return Math.Sqrt(Math.PI) / mSigma; }
+    }
+
+    public double Gate {
+        set { mAcfL1.Gate = value; }
+        get { return mAcfL1.Gate; }
+    }
+
+    public WaveIn(int sampleRate, int bufferSize, int fftSize) : base(sampleRate, 1, bufferSize, 8, true) {
         READ_LEN = bufferSize;
         FFT_N = fftSize;
-        SIGMA = Math.Sqrt(Math.PI) / windowWidth;
+        WindowWidth = 1.0;
         mAcfL1 = new ACF(FFT_N);
         mInput = new double[FFT_N];
         mFftBuff = new double[FFT_N];
@@ -27,8 +37,8 @@
         }
         if (Read) {
             for (int i = 0; i < FFT_N; i++) {
-                var ts = (2.0 * i / FFT_N - 1.0) * SIGMA;
-                mFftBuff[i] = mInput[i] * Math.Pow(Math.E, -ts * ts);
+                var ts = (2.0 * i / FFT_N - 1.0) * mSigma;
+                mFftBuff[i] = mInput[i] * Math.Pow(Math.E, -ts * ts) * mSigma;
             }
             mAcfL1.ExecN(mFftBuff, Acf);
             mAcfL1.Spec(Acf, AcfSpec);
