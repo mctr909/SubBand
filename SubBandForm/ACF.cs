@@ -38,7 +38,9 @@
             output[i] = re;
         }
         mIFFT.Exec(output, mIm);
-        mBase = output[0];
+        if (mBase < output[0]) {
+            mBase = output[0];
+        }
         if (mBase < mGate) {
             mBase = mGate;
         }
@@ -57,6 +59,7 @@
             Array.Copy(output, 0, mRe2, 0, N);
             exec(mRe2, output);
         }
+        mBase *= 1.0 - 1.0 / 10.0;
     }
 
     public void Spec(double[] input, double[] output) {
@@ -71,7 +74,7 @@
             if (re < MIN) {
                 re = MIN;
             }
-            output[i] = 20 * Math.Log10(re) + 20;
+            output[i] = 20 * Math.Log10(re) + 15;
         }
     }
 }

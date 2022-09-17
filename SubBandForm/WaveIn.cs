@@ -36,12 +36,15 @@
             mInput[j] = WaveBuffer[i] / 32768.0;
         }
         if (Read) {
+            var scale = 2.0 / WindowWidth;
+            var ofsT = -(1.0 - WindowWidth);
             for (int i = 0; i < FFT_N; i++) {
-                var ts = (2.0 * i / FFT_N - 1.0) * mSigma;
-                mFftBuff[i] = mInput[i] * Math.Pow(Math.E, -ts * ts) * mSigma;
+                var t = (2.0 * i / FFT_N - 1.0 + ofsT) * mSigma;
+                var window = Math.Pow(Math.E, -t * t);
+                mFftBuff[i] = mInput[i] * window * scale;
             }
             mAcfL1.ExecN(mFftBuff, Acf);
-            mAcfL1.Spec(Acf, AcfSpec);
+            mAcfL1.Spec(mFftBuff, AcfSpec);
             Read = false;
         }
     }

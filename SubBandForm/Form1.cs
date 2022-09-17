@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace SubBandForm {
     public partial class Form1 : Form {
-        const int RANGE_DB = 60;
+        int RANGE_DB = 72;
         bool mSetSize = false;
         WaveIn mWaveIn;
         byte[] mPix;
@@ -18,8 +18,9 @@ namespace SubBandForm {
         }
 
         private void Form1_Load(object sender, EventArgs e) {
-            mWaveIn = new WaveIn(44100, 256, 8192);
-            mWaveIn.WindowWidth = 0.375;
+            mWaveIn = new WaveIn(44100, 256, 16384);
+            tbWindowWidth_Scroll(sender, e);
+            tbRange_Scroll(sender, e);
             mWaveIn.Gate = 0;
             mSetSize = true;
             timer1.Enabled = true;
@@ -31,27 +32,41 @@ namespace SubBandForm {
             mSetSize = true;
         }
 
+        private void tbWindowWidth_Scroll(object sender, EventArgs e) {
+            mWaveIn.WindowWidth = 1.0 / (1.0 + tbWindowWidth.Value * 0.1);
+        }
+
+        private void tbRange_Scroll(object sender, EventArgs e) {
+            RANGE_DB = -tbRange.Value;
+        }
+
         private void timer1_Tick(object sender, EventArgs e) {
             if (mSetSize) {
                 setSize();
             }
             var g = Graphics.FromImage(pictureBox1.Image);
             g.Clear(Color.Black);
-            var gheight = pictureBox1.Height;
+            var gheight = pictureBox1.Height / 2;
             mWaveIn.Read = true;
             //drawWave(g, mWaveIn.Acf, 1.0, 1 / 4.0, 3 / 4.0, gheight, 0);
-            //drawSpec(g, mWaveIn.AcfSpec, 1, gheight, 0);
-            drawScrollSpec(mWaveIn.AcfSpec);
+            drawSpec(g, mWaveIn.AcfSpec, gheight, 0);
+            drawScrollSpec(mWaveIn.AcfSpec, gheight, gheight);
             pictureBox1.Image = pictureBox1.Image;
             g.Dispose();
             mSetSize = false;
         }
 
         void setSize() {
-            pictureBox1.Top = 0;
+            tbWindowWidth.Top = 0;
+            tbWindowWidth.Left = 0;
+            pictureBox1.Top = tbWindowWidth.Bottom;
             pictureBox1.Left = 0;
             pictureBox1.Width = Width - 16;
-            pictureBox1.Height = Height - 39;
+            pictureBox1.Height = Height - tbWindowWidth.Height - 39;
+            tbWindowWidth.Width = pictureBox1.Width / 2 - 4;
+            tbRange.Top = 0;
+            tbRange.Left = tbWindowWidth.Right + 4;
+            tbRange.Width = tbWindowWidth.Width;
             if (null != pictureBox1.Image) {
                 pictureBox1.Image.Dispose();
                 pictureBox1.Image = null;
@@ -167,11 +182,11 @@ namespace SubBandForm {
             }
         }
 
-        void drawSpec(Graphics g, double[] arr, double scale, int height, int offset) {
+        void drawSpec(Graphics g, double[] arr, int height, int offset) {
             var width = pictureBox1.Width;
             var gx0 = (int)(Math.Pow(arr.Length / 10.0, -1) * (arr.Length - 1));
             var x0 = 0;
-            var y0 = dbToY(arr[gx0] * scale, height, offset);
+            var y0 = dbToY(arr[gx0], height, offset);
             int y1;
             for (int db = 0; -RANGE_DB < db; db -= 3) {
                 var py = dbToY(db, height, offset);
@@ -184,19 +199,19 @@ namespace SubBandForm {
             for (int x1 = 0; x1 < width; x1++) {
                 var gx1 = (int)(Math.Pow(arr.Length / 10.0, (double)x1 / width - 1) * (arr.Length - 1));
                 if (1 < gx1 - gx0) {
-                    y1 = dbToY(arr[gx0] * scale, height, offset);
+                    y1 = dbToY(arr[gx0], height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                     var max = double.MinValue;
                     var min = double.MaxValue;
                     for (var i = gx0; i <= gx1; i++) {
-                        var v = arr[i] * scale;
+                        var v = arr[i];
                         min = Math.Min(min, v);
                         max = Math.Max(max, v);
                     }
                     g.DrawLine(Pens.Green, x1, dbToY(min, height, offset), x1, dbToY(max, height, offset));
-                    y1 = dbToY(arr[gx1] * scale, height, offset);
+                    y1 = dbToY(arr[gx1], height, offset);
                 } else {
-                    y1 = dbToY(arr[gx1] * scale, height, offset);
+                    y1 = dbToY(arr[gx1], height, offset);
                     g.DrawLine(Pens.Green, x0, y0, x1, y1);
                 }
                 x0 = x1;
@@ -205,12 +220,15 @@ namespace SubBandForm {
             }
         }
 
-        void drawScrollSpec(double[] arr) {
+        void drawScrollSpec(double[] arr, int height, int offset) {
             var bmp = (Bitmap)pictureBox1.Image;
-            var rect = new Rectangle(Point.Empty, bmp.Size);
-            var bmpData = bmp.LockBits(rect, ImageLockMode.WriteOnly, bmp.PixelFormat);
-            var size = 4 * bmp.Width * bmp.Height;
-            Array.Copy(mPix, 0, mPix, bmpData.Stride, size - bmpData.Stride);
+            var bmpData = bmp.LockBits(new Rectangle(Point.Empty, bmp.Size), ImageLockMode.WriteOnly, bmp.PixelFormat);
+            var size = 4 * bmp.Width * height;
+            var offsetY = 4 * bmp.Width * offset;
+            for (int i = 0; i < 5; i++) {
+                Array.Copy(mPix, bmpData.Stride * i, mPix, bmpData.Stride * (i + 1), bmpData.Stride);
+            }
+            Array.Copy(mPix, 0, mPix, bmpData.Stride * 5, size - bmpData.Stride * 5);
             var gx0 = (int)(Math.Pow(arr.Length / 10.0, -1) * (arr.Length - 1));
             for (int s = 0, x = 0; x < bmp.Width; s += 4, x++) {
                 var gx1 = (int)(Math.Pow(arr.Length / 10.0, (double)x / bmp.Width - 1) * (arr.Length - 1));
@@ -227,7 +245,7 @@ namespace SubBandForm {
                 }
                 gx0 = gx1;
             }
-            Marshal.Copy(mPix, 0, bmpData.Scan0, size);
+            Marshal.Copy(mPix, 0, bmpData.Scan0 + offsetY, size);
             bmp.UnlockBits(bmpData);
         }
     }
