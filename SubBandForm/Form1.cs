@@ -9,8 +9,11 @@ namespace SubBandForm {
         byte[] mPix;
 
         readonly Pen GRID_MAJOR = new Pen(Color.FromArgb(127, 0, 0), 1.0f);
-        readonly Pen GRID_MINOR = new Pen(Color.FromArgb(79, 0, 0), 1.0f) {
-            DashPattern = new float[] { 3, 2 }
+        readonly Pen GRID_MINOR1 = new Pen(Color.FromArgb(79, 0, 0), 1.0f) {
+            DashPattern = new float[] { 3, 1 }
+        };
+        readonly Pen GRID_MINOR2 = new Pen(Color.FromArgb(79, 0, 0), 1.0f) {
+            DashPattern = new float[] { 1, 2 }
         };
 
         public Form1() {
@@ -21,7 +24,6 @@ namespace SubBandForm {
             mWaveIn = new WaveIn(44100, 256, 16384);
             tbWindowWidth_Scroll(sender, e);
             tbRange_Scroll(sender, e);
-            mWaveIn.Gate = 0;
             mSetSize = true;
             timer1.Enabled = true;
             timer1.Interval = 1;
@@ -148,8 +150,8 @@ namespace SubBandForm {
                 var y = dbToLiner(ydb, height) / 2;
                 var yp = centerY + offset + y;
                 var ym = centerY + offset - y;
-                g.DrawLine(GRID_MINOR, 0, yp, width - 1, yp);
-                g.DrawLine(GRID_MINOR, 0, ym, width - 1, ym);
+                g.DrawLine(GRID_MINOR1, 0, yp, width - 1, yp);
+                g.DrawLine(GRID_MINOR1, 0, ym, width - 1, ym);
             }
             var gPitch = (double)arr.Length / width;
             var gBegin = begin * width * gPitch;
@@ -192,8 +194,10 @@ namespace SubBandForm {
                 var py = dbToY(db, height, offset);
                 if (db % 12 == 0) {
                     g.DrawLine(GRID_MAJOR, 0, py, width - 1, py);
+                } else if (db % 6 == 0) {
+                    g.DrawLine(GRID_MINOR1, 0, py, width - 1, py);
                 } else {
-                    g.DrawLine(GRID_MINOR, 0, py, width - 1, py);
+                    g.DrawLine(GRID_MINOR2, 0, py, width - 1, py);
                 }
             }
             for (int x1 = 0; x1 < width; x1++) {

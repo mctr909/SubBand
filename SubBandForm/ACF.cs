@@ -1,6 +1,6 @@
 ﻿class ACF {
     readonly double MIN;
-    double mGate;
+    readonly int FFT_N;
     double[] mRe;
     double[] mIm;
     double[] mRe2;
@@ -10,21 +10,16 @@
     FFT mSpec;
     double mBase;
 
-    public double Gate {
-        set { mGate = Math.Pow(10, value / 20.0); }
-        get { return 20 * Math.Log10(mGate); }
-    }
-
     public ACF(int size) {
         MIN = Math.Pow(10, -200 / 20.0);
-        Gate = 0.0;
+        FFT_N = size * 2;
         mRe = new double[size];
         mIm = new double[size];
         mFFT = new FFT(size);
         mIFFT = new FFT(size, true);
-        mSpec = new FFT(size * 2);
-        mRe2 = new double[size * 2];
-        mIm2 = new double[size * 2];
+        mSpec = new FFT(FFT_N);
+        mRe2 = new double[FFT_N];
+        mIm2 = new double[FFT_N];
     }
 
     void exec(double[] input, double[] output) {
@@ -33,7 +28,7 @@
         Array.Clear(mIm);
         mFFT.Exec(mRe, mIm);
         for (int i = 0; i < N; i++) {
-            var re =  (mRe[i] * mRe[i]) + (mIm[i] * mIm[i]);
+            var re = (mRe[i] * mRe[i]) + (mIm[i] * mIm[i]);
             mIm[i] = -(mRe[i] * mIm[i]) + (mIm[i] * mRe[i]);
             output[i] = re;
         }
@@ -41,8 +36,8 @@
         if (mBase < output[0]) {
             mBase = output[0];
         }
-        if (mBase < mGate) {
-            mBase = mGate;
+        if (mBase < 1.0) {
+            mBase = 1.0;
         }
         for (int i = 0, j = N / 2; i < N / 2; i++, j++) {
             output[j] = output[i] / mBase * (0.5 + 0.5 * Math.Cos(2 * Math.PI * i / N));
@@ -59,7 +54,7 @@
             Array.Copy(output, 0, mRe2, 0, N);
             exec(mRe2, output);
         }
-        mBase *= 1.0 - 1.0 / 10.0;
+        mBase *= 1.0 - 1.0 / 20.0;
     }
 
     public void Spec(double[] input, double[] output) {
@@ -74,7 +69,22 @@
             if (re < MIN) {
                 re = MIN;
             }
-            output[i] = 20 * Math.Log10(re) + 15;
+            mRe2[i] = 10 * Math.Log10(re) + 12;
+        }
+        var w = 20;
+        for (int i = 0; i < output.Length - w; i++) {
+            var max = double.MinValue;
+            for (int j = i < w ? -i : -w; j <= w; j++) {
+                max = Math.Max(max, mRe2[i + j]);
+            }
+            mIm2[i] = max;
+        }
+        for (int i = 0; i < output.Length; i++) {
+            if (mRe2[i] < mIm2[i]) {
+                output[i] = -200;
+            } else {
+                output[i] = mRe2[i];
+            }
         }
     }
 }

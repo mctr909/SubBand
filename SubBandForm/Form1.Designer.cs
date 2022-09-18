@@ -51,6 +51,7 @@
             this.tbWindowWidth.Maximum = 100;
             this.tbWindowWidth.Name = "tbWindowWidth";
             this.tbWindowWidth.Size = new System.Drawing.Size(74, 45);
+            this.tbWindowWidth.SmallChange = 10;
             this.tbWindowWidth.TabIndex = 1;
             this.tbWindowWidth.TickFrequency = 10;
             this.tbWindowWidth.Value = 30;
@@ -59,14 +60,14 @@
             // tbRange
             // 
             this.tbRange.Location = new System.Drawing.Point(92, 12);
-            this.tbRange.Maximum = -24;
-            this.tbRange.Minimum = -84;
+            this.tbRange.Maximum = -12;
+            this.tbRange.Minimum = -48;
             this.tbRange.Name = "tbRange";
             this.tbRange.Size = new System.Drawing.Size(74, 45);
             this.tbRange.SmallChange = 6;
             this.tbRange.TabIndex = 2;
             this.tbRange.TickFrequency = 12;
-            this.tbRange.Value = -60;
+            this.tbRange.Value = -24;
             this.tbRange.Scroll += new System.EventHandler(this.tbRange_Scroll);
             // 
             // Form1

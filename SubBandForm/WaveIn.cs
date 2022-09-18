@@ -14,11 +14,6 @@
         get { return Math.Sqrt(Math.PI) / mSigma; }
     }
 
-    public double Gate {
-        set { mAcfL1.Gate = value; }
-        get { return mAcfL1.Gate; }
-    }
-
     public WaveIn(int sampleRate, int bufferSize, int fftSize) : base(sampleRate, 1, bufferSize, 8, true) {
         READ_LEN = bufferSize;
         FFT_N = fftSize;
@@ -44,7 +39,7 @@
                 mFftBuff[i] = mInput[i] * window * scale;
             }
             mAcfL1.ExecN(mFftBuff, Acf);
-            mAcfL1.Spec(mFftBuff, AcfSpec);
+            mAcfL1.Spec(Acf, AcfSpec);
             Read = false;
         }
     }
