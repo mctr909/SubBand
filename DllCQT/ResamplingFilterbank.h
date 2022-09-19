@@ -9,10 +9,7 @@ namespace Cqt
 
 	class ResamplingFilterbank {
 	public:
-		ResamplingFilterbank(int stageNumber)
-		: mInputResamplingHandler(stageNumber) {
-			StageNumber = stageNumber;
-		}
+		ResamplingFilterbank(int stageNumber);
 		~ResamplingFilterbank() = default;
 
 		double getOriginSamplerate() { return mOriginSamplerate; };
@@ -27,18 +24,18 @@ namespace Cqt
 
 	protected:
 		ResamplingHandler mInputResamplingHandler;
-		std::vector<HalfBandLowpass> mDownsamplingFilters; //[StageNumber - 1];
-		std::vector<HalfBandLowpass> mUpsamplingFilters; //[StageNumber - 1];
-		std::vector<CircularBuffer> mStageInputBuffers; //[StageNumber];
-		std::vector<CircularBuffer> mStageOutputBuffers; //[StageNumber];
+		std::vector<HalfBandLowpass> mDownsamplingFilters;
+		std::vector<int> mDownsamplingBlockSizes;
+		std::vector<HalfBandLowpass> mUpsamplingFilters;
+		std::vector<int> mUpsamplingBlockSizes;
+		std::vector<CircularBuffer> mStageInputBuffers;
+		std::vector<CircularBuffer> mStageOutputBuffers;
+		std::vector<double> mStageSamplerates;
 
 		int StageNumber;
 		double mOriginSamplerate;
 		int mOriginBlockSize;
 		int mOriginDownsampling;
-		std::vector<double> mStageSamplerates; //[StageNumber];
-		std::vector<int> mDownsamplingBlockSizes; //[StageNumber - 1];
-		std::vector<int> mUpsamplingBlockSizes; //[StageNumber - 1];
 
 		// block based
 		int mBlockFilterNumber;

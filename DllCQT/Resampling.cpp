@@ -7,6 +7,10 @@ HalfBandLowpass::HalfBandLowpass(size_t allpassNumber)
 	AllpassNumber = allpassNumber;
 	mAllpassNumberTotal = AllpassNumber * 2;
 	mFilterOrder = 2 * mAllpassNumberTotal + 1;
+	for (int i = 0; i < AllpassNumber; i++) {
+		mDirectPathFilters.push_back(FirstOrderAllpass());
+		mDelayPathFilters.push_back(FirstOrderAllpass());
+	}
 }
 
 bool HalfBandLowpass::init(const int expectedBlockSize, bool isDownsampling, bool isSampleBased, double transitionBandwidth)

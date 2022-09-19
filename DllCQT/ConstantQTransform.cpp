@@ -3,8 +3,9 @@
 using namespace Cqt;
 
 TransformationHandler::TransformationHandler(int b) :
-	mCqtBuffer(B), mFft(Fft_Size, false), mFftInv(Fft_Size, true)
+	mCqtBuffer(b), mFft(Fft_Size, false), mFftInv(Fft_Size, true)
 {
+	B = b;
 	// hard-coded Hann window as of now
 	calculateWindow(mWindow, Fft_Size);
 	// fft and buffers
@@ -22,6 +23,10 @@ TransformationHandler::TransformationHandler(int b) :
 	// kernels
 	for (int tone = 0; tone < B; tone++)
 	{
+		mKernelArray.push_back(CplxVector());
+		mKernelMask.push_back(std::vector<int>());
+		mKernelArrayInverse.push_back(CplxVector());
+		mKernelMaskInv.push_back(std::vector<int>());
 		mFft.spectrumVector(mKernelArray[tone]);
 		mFft.spectrumVector(mKernelArrayInverse[tone]);
 	}
@@ -173,19 +178,33 @@ ConstantQTransform::ConstantQTransform(int b, int octaveNumber)
 	// configure all the buffer sizes
 	for (int tone = 0; tone < B; tone++)
 	{
+		mKernelStorage.push_back(CplxVector());
+		mKernelStorageTime.push_back(CplxVector());
+		mKernelStorageInv.push_back(CplxVector());
+		mKernelStorageTimeInv.push_back(CplxVector());
+		mKernelMask.push_back(std::vector<int>());
+		mKernelMaskInv.push_back(std::vector<int>());
 		mFft.valueVector(mKernelStorageTime[tone]);
 		mFft.valueVector(mKernelStorageTimeInv[tone]);
 		mFft.spectrumVector(mKernelStorage[tone]);
 		mFft.spectrumVector(mKernelStorageInv[tone]);
 	}
 	// generate window function
-	window.resize(Fft_Size);
-	TransformationHandler::calculateWindow(window.data(), Fft_Size);
+	mWindow.resize(Fft_Size);
+	TransformationHandler::calculateWindow(mWindow.data(), Fft_Size);
 	// transformation in/out buffers
 	mKernelFreqs.resize(OctaveNumber);
 	mKernelFreqsInv.resize(OctaveNumber);
 	for (int octave = 0; octave < OctaveNumber; octave++)
 	{
+		mOverlaps.push_back(0);
+		mLatencyMs.push_back(0);
+		mLatencySamples.push_back(0);
+		mHopSizes.push_back(0);
+		mSampleRates.push_back(0);
+		mSampleRatesByOriginRate.push_back(0);
+		mSampleCounters.push_back(0);
+		mTransformationHandlers.push_back(TransformationHandler(B));
 		mTransformationHandlers[octave].initBuffers(mFilterbank.getStageInputBuffer(octave), mFilterbank.getStageOutputBuffer(octave));
 		mKernelFreqs[octave].resize(B, 0.);
 		mKernelFreqsInv[octave].resize(B, 0.);
@@ -276,8 +295,8 @@ inline void ConstantQTransform::calculateKernels()
 		const double fkInv = mKernelFreqsInv[0][k];
 		for (int n = 0; n < Fft_Size; n++)
 		{
-			mKernelStorageTime[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * window[n] * std::exp(-1i * 2. * Pi() * static_cast<double>(n) * (fk / mSampleRates[0])));
-			mKernelStorageTimeInv[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * window[n] * std::exp(-1i * 2. * Pi() * static_cast<double>(n) * (fkInv / mSampleRates[0])));
+			mKernelStorageTime[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * mWindow[n] * std::exp(-1i * 2. * Pi() * static_cast<double>(n) * (fk / mSampleRates[0])));
+			mKernelStorageTimeInv[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * mWindow[n] * std::exp(-1i * 2. * Pi() * static_cast<double>(n) * (fkInv / mSampleRates[0])));
 		}
 	}
 	// fft transform kernels and extract necessary (right side of the spectrum) parts

@@ -2,6 +2,23 @@
 
 using namespace Cqt;
 
+ResamplingFilterbank::ResamplingFilterbank(int stageNumber)
+	: mInputResamplingHandler(stageNumber) {
+	StageNumber = stageNumber;
+
+	for (int i = 0; i < StageNumber - 1; i++) {
+		mDownsamplingFilters.push_back(HalfBandLowpass(3));
+		mDownsamplingBlockSizes.push_back(0);
+		mUpsamplingFilters.push_back(HalfBandLowpass(3));
+		mUpsamplingBlockSizes.push_back(0);
+	}
+	for (int i = 0; i < StageNumber; i++) {
+		mStageInputBuffers.push_back(CircularBuffer());
+		mStageOutputBuffers.push_back(CircularBuffer());
+		mStageSamplerates.push_back(0.0);
+	}
+}
+
 void ResamplingFilterbank::init(const double samplerate, const int blockSize, const int bufferSize)
 {
 	// handling of input / output buffering

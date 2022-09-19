@@ -65,10 +65,10 @@ namespace Cqt
 		BufferType mWindow[Fft_Size];
 		BufferType mInvWindow[Fft_Size];
 		// kernel storage
-		std::vector<CplxVector> mKernelArray; //[B] ; // mB x Fft_Domain_Size
-		std::vector<CplxVector> mKernelArrayInverse; //[B] ; // mB x Fft_Domain_Size
-		std::vector<std::vector<int>> mKernelMask; //[B]; // mB x Fft_Domain_Size
-		std::vector<std::vector<int>> mKernelMaskInv; //[B]; // mB x Fft_Domain_Size
+		std::vector<CplxVector> mKernelArray;         // mB x Fft_Domain_Size
+		std::vector<CplxVector> mKernelArrayInverse;  // mB x Fft_Domain_Size
+		std::vector<std::vector<int>> mKernelMask;    // mB x Fft_Domain_Size
+		std::vector<std::vector<int>> mKernelMaskInv; // mB x Fft_Domain_Size
 
 		// scaling 
 		const double mFftScalingFactor{ 1. / std::sqrt(static_cast<double>(Fft_Size)) };
@@ -128,33 +128,32 @@ namespace Cqt
 		int OctaveNumber;
 		double mConcertPitch{ 440. };
 		int mBinNumber;
-		std::vector<int> mOverlaps; //[OctaveNumber];
-		std::vector<double> mLatencyMs; //[OctaveNumber] ;
-		std::vector<size_t> mLatencySamples; //[OctaveNumber] ;
-		std::vector<int> mHopSizes; //[OctaveNumber] ;
 		double mFs;
-		std::vector<double> mSampleRates; //[OctaveNumber] ;
-		std::vector<double> mSampleRatesByOriginRate; //[OctaveNumber] ;
 
-		std::vector<TransformationHandler> mTransformationHandlers; //[OctaveNumber];
+		std::vector<int> mOverlaps;          //[OctaveNumber]
+		std::vector<double> mLatencyMs;      //[OctaveNumber]
+		std::vector<size_t> mLatencySamples; //[OctaveNumber]
+		std::vector<int> mHopSizes;          //[OctaveNumber]
+		std::vector<double> mSampleRates;             //[OctaveNumber]
+		std::vector<double> mSampleRatesByOriginRate; //[OctaveNumber]
+		std::vector<size_t> mSampleCounters;          //[OctaveNumber]
+		std::vector<TransformationHandler> mTransformationHandlers; //[OctaveNumber]
+
+		std::vector<CplxVector> mKernelStorage;        //[B]
+		std::vector<CplxVector> mKernelStorageTime;    //[B]
+		std::vector<CplxVector> mKernelStorageInv;     //[B]
+		std::vector<CplxVector> mKernelStorageTimeInv; //[B]
+		std::vector<std::vector<int>> mKernelMask;     //[B]
+		std::vector<std::vector<int>> mKernelMaskInv;  //[B]
+
 		ResamplingFilterbank mFilterbank;
-		std::vector<size_t> mSampleCounters; //[OctaveNumber] ;
-
 		std::vector<ScheduleElement> mCqtSchedule;
 
 		FFT mFft;
 		CplxVector mFftTmpStorage;
 		CplxVector mFftTmpStorageInv;
-
-		std::vector<CplxVector> mKernelStorage; //[B];
-		std::vector<CplxVector> mKernelStorageInv; //[B];
-		std::vector<std::vector<int>> mKernelMask; //[B];
-		std::vector<std::vector<int>> mKernelMaskInv; //[B];
-		std::vector<CplxVector> mKernelStorageTime; //[B];
-		std::vector<CplxVector> mKernelStorageTimeInv; //[B];
-		RealVector window;
+		RealVector mWindow;
 		std::atomic<bool> mNewKernels{ true };
-
 		std::vector<std::vector<double>> mKernelFreqs;
 		std::vector<std::vector<double>> mKernelFreqsInv;
 	};

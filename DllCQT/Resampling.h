@@ -4,58 +4,56 @@
 #include <vector>
 
 namespace Cqt {
-	template<typename FloatType>
 	class Delay {
 	public:
 		Delay() = default;
 		~Delay() = default;
 
-		inline void processBlock(FloatType* const data, const int blockSize)
+		inline void processBlock(BufferType* const data, const int blockSize)
 		{
 			for (int i = 0; i < blockSize; i++)
 			{
-				const FloatType input = data[i];
+				const BufferType input = data[i];
 				data[i] = mStorage;
 				mStorage = input;
 			}
 		}
 	private:
-		FloatType mStorage{ 0. };
+		BufferType mStorage{ 0. };
 	};
 
-	template <typename FloatType>
 	class FirstOrderAllpass {
 	public:
 		FirstOrderAllpass() = default;
 		~FirstOrderAllpass() = default;
 
-		inline void initCoeff(FloatType ak)
+		inline void initCoeff(BufferType ak)
 		{
-			mAk = static_cast<FloatType>(ak);
+			mAk = static_cast<BufferType>(ak);
 		};
 
-		inline FloatType processSample(const FloatType sample)
+		inline BufferType processSample(const BufferType sample)
 		{
-			const FloatType y = mAk * (sample - mYm1) + mXm1;
+			const BufferType y = mAk * (sample - mYm1) + mXm1;
 			mXm1 = sample;
 			mYm1 = y;
 			return y;
 		};
 
-		inline void processBlock(FloatType* const samples, const int blocksize)
+		inline void processBlock(BufferType* const samples, const int blocksize)
 		{
 			for (int i = 0; i < blocksize; i++)
 			{
-				const FloatType sample = samples[i];
+				const BufferType sample = samples[i];
 				samples[i] = mAk * (sample - mYm1) + mXm1;
 				mXm1 = sample;
 				mYm1 = samples[i];
 			}
 		};
 	private:
-		FloatType mAk{ 0. };
-		FloatType mXm1{ 0. };
-		FloatType mYm1{ 0. };
+		BufferType mAk{ 0. };
+		BufferType mXm1{ 0. };
+		BufferType mYm1{ 0. };
 	};
 
 	class HalfBandLowpass {
@@ -89,9 +87,9 @@ namespace Cqt {
 		size_t mFilterOrder;
 		std::vector<double> mCoefficients;
 
-		std::vector<FirstOrderAllpass<double>> mDirectPathFilters; //[AllpassNumber];
-		std::vector<FirstOrderAllpass<double>> mDelayPathFilters; //[AllpassNumber];
-		Delay<double> mDelay;
+		std::vector<FirstOrderAllpass> mDirectPathFilters;
+		std::vector<FirstOrderAllpass> mDelayPathFilters;
+		Delay mDelay;
 
 		int mTargetBlockSize{ 0 };
 		int mInputBlockSize{ 1 };
