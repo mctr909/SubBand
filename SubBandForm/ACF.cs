@@ -10,6 +10,8 @@
     FFT mSpec;
     double mBase;
 
+    public bool EliminateSlope = false;
+
     public ACF(int size) {
         MIN = Math.Pow(10, -200 / 20.0);
         FFT_N = size * 2;
@@ -62,28 +64,41 @@
         Array.Clear(mIm2);
         Array.Copy(input, 0, mRe2, 0, input.Length);
         mSpec.Exec(mRe2, mIm2);
-        for (int i = 0; i < output.Length; i++) {
-            var re = mRe2[i];
-            var im = mIm2[i];
-            re = Math.Sqrt(re * re + im * im) / output.Length;
-            if (re < MIN) {
-                re = MIN;
+        var N = mRe2.Length / 2;
+        if (EliminateSlope) {
+            for (int i = 0; i < N; i++) {
+                var re = mRe2[i];
+                var im = mIm2[i];
+                re = Math.Sqrt(re * re + im * im) / N;
+                if (re < MIN) {
+                    re = MIN;
+                }
+                mRe[i] = 10 * Math.Log10(re) + 12;
             }
-            mRe2[i] = 10 * Math.Log10(re) + 12;
-        }
-        var w = 20;
-        for (int i = 0; i < output.Length - w; i++) {
-            var max = double.MinValue;
-            for (int j = i < w ? -i : -w; j <= w; j++) {
-                max = Math.Max(max, mRe2[i + j]);
+            for (int i = 0; i < N; i++) {
+                var w = 5 + (int)(15.0 * i / N);
+                var max = double.MinValue;
+                for (int j = i < w ? -i : -w; (i + j) < N && j <= w; j++) {
+                    max = Math.Max(max, mRe[i + j]);
+                }
+                mRe2[i] = max;
             }
-            mIm2[i] = max;
-        }
-        for (int i = 0; i < output.Length; i++) {
-            if (mRe2[i] < mIm2[i]) {
-                output[i] = -200;
-            } else {
-                output[i] = mRe2[i];
+            for (int i = 0; i < N; i++) {
+                if (mRe[i] < mRe2[i]) {
+                    output[i] = -200;
+                } else {
+                    output[i] = mRe[i];
+                }
+            }
+        } else {
+            for (int i = 0; i < output.Length; i++) {
+                var re = mRe2[i];
+                var im = mIm2[i];
+                re = Math.Sqrt(re * re + im * im) / output.Length;
+                if (re < MIN) {
+                    re = MIN;
+                }
+                output[i] = 10 * Math.Log10(re) + 12;
             }
         }
     }
