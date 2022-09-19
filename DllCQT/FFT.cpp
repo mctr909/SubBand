@@ -10,14 +10,14 @@ FFT::FFT(int n, bool inverse) {
 	BITS = (int)(log(SIZE) / log(2));
 	COS = new double[SIZE / 2];
 	SIN = new double[SIZE / 2];
-	auto dtheta = (inverse ? 2 : -2) * Pi<double>() / SIZE;
+	auto dtheta = (inverse ? 2 : -2) * Pi() / SIZE;
 	for (int i = 0; i < SIZE / 2; i++) {
 		COS[i] = cos(dtheta * i);
 		SIN[i] = sin(dtheta * i);
 	}
 }
 void
-FFT::Exec(std::vector<std::complex<double>> io) {
+FFT::Exec(std::vector<std::complex<BufferType>> io) {
 	int j = 0;
 	int n2 = SIZE / 2;
 	for (int i = 1; i < SIZE - 1; i++) {
@@ -56,18 +56,18 @@ FFT::Exec(std::vector<std::complex<double>> io) {
 	}
 }
 void
-FFT::Exec(std::vector<std::complex<double>> input, std::vector<std::complex<double>> output) {
+FFT::Exec(std::vector<std::complex<BufferType>> input, std::vector<std::complex<BufferType>> output) {
 	for (int i = 0; i < SIZE; i++) {
 		output[i] = input[i];
 	}
 	Exec(output);
 }
 void
-FFT::Exec(std::vector<std::complex<double>> input, double* output) {
+FFT::Exec(std::vector<std::complex<BufferType>> input, std::vector<BufferType> output) {
 	//TODO: FFT::Exec(CplxVector input, double* output)
 }
 void
-FFT::Exec(double* input, std::vector<std::complex<double>> output) {
+FFT::Exec(std::vector<BufferType> input, std::vector<std::complex<BufferType>> output) {
 	for (int i = 0; i < SIZE; i++) {
 		output[i].real(input[i]);
 		output[i].imag(0.0);

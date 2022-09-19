@@ -5,12 +5,14 @@
 
 namespace Cqt
 {
-    typedef CircularBuffer<double>* BufferPtr;
+    typedef CircularBuffer* BufferPtr;
 
-	template<int StageNumber>
 	class ResamplingFilterbank {
 	public:
-		ResamplingFilterbank() = default;
+		ResamplingFilterbank(int stageNumber)
+		: mInputResamplingHandler(stageNumber) {
+			StageNumber = stageNumber;
+		}
 		~ResamplingFilterbank() = default;
 
 		double getOriginSamplerate() { return mOriginSamplerate; };
@@ -20,22 +22,23 @@ namespace Cqt
 
 		void init(const double samplerate, const int blockSize, const int bufferSize);
 
-		void inputBlock(double* const data, const int blockSize);
-		double* outputBlock(const int blockSize);
+		void inputBlock(BufferType* const data, const int blockSize);
+		BufferType* outputBlock(const int blockSize);
 
 	protected:
-		ResamplingHandler<double, 3> mInputResamplingHandler;
-		HalfBandLowpass<double, 3> mDownsamplingFilters[StageNumber - 1];
-		HalfBandLowpass<double, 3> mUpsamplingFilters[StageNumber - 1];
-		CircularBuffer<double> mStageInputBuffers[StageNumber];
-		CircularBuffer<double> mStageOutputBuffers[StageNumber];
+		ResamplingHandler mInputResamplingHandler;
+		std::vector<HalfBandLowpass> mDownsamplingFilters; //[StageNumber - 1];
+		std::vector<HalfBandLowpass> mUpsamplingFilters; //[StageNumber - 1];
+		std::vector<CircularBuffer> mStageInputBuffers; //[StageNumber];
+		std::vector<CircularBuffer> mStageOutputBuffers; //[StageNumber];
 
+		int StageNumber;
 		double mOriginSamplerate;
 		int mOriginBlockSize;
 		int mOriginDownsampling;
-		double mStageSamplerates[StageNumber];
-		int mDownsamplingBlockSizes[StageNumber - 1];
-		int mUpsamplingBlockSizes[StageNumber - 1];
+		std::vector<double> mStageSamplerates; //[StageNumber];
+		std::vector<int> mDownsamplingBlockSizes; //[StageNumber - 1];
+		std::vector<int> mUpsamplingBlockSizes; //[StageNumber - 1];
 
 		// block based
 		int mBlockFilterNumber;
@@ -44,14 +47,14 @@ namespace Cqt
 		int mSampleInputSize{ 0 };
 		int mSampleFilterNumber;
 		std::vector<std::vector<bool>> mIsSample;
-		std::vector<double> mUpsamplingSampleBuffer;
-		std::vector<double> mUpsamplingSampleOutputBuffer;
+		std::vector<BufferType> mUpsamplingSampleBuffer;
+		std::vector<BufferType> mUpsamplingSampleOutputBuffer;
 
 		// handling of input / output buffering
-		CircularBuffer<double> mInputBuffer;
-		CircularBuffer<double> mOutputBuffer;
-		std::vector<double> mInputData;
-		std::vector<double> mOutputData;
+		CircularBuffer mInputBuffer;
+		CircularBuffer mOutputBuffer;
+		std::vector<BufferType> mInputData;
+		std::vector<BufferType> mOutputData;
 		size_t mInputDataCounter{ 0 };
 		size_t mOutputDataCounter{ 0 };
 		int mExpectedBlockSize{ 0 };

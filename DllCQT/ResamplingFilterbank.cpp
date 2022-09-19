@@ -2,8 +2,7 @@
 
 using namespace Cqt;
 
-template<int StageNumber>
-inline void ResamplingFilterbank<StageNumber>::init(const double samplerate, const int blockSize, const int bufferSize)
+void ResamplingFilterbank::init(const double samplerate, const int blockSize, const int bufferSize)
 {
 	// handling of input / output buffering
 	mInputBuffer.changeSize(blockSize * 2);
@@ -20,15 +19,15 @@ inline void ResamplingFilterbank<StageNumber>::init(const double samplerate, con
 	//assert(((fsInt % 44100) == 0) || ((fsInt % 48000) == 0));
 	if ((fsInt % 44100) == 0)
 	{
-		mOriginDownsampling = std::log2(fsInt / 44100);
+		mOriginDownsampling = (int)std::log2(fsInt / 44100);
 		mOriginSamplerate = 44100.;
 	} else if ((fsInt % 48000) == 0)
 	{
-		mOriginDownsampling = std::log2(fsInt / 48000);
+		mOriginDownsampling = (int)std::log2(fsInt / 48000);
 		mOriginSamplerate = 48000.;
 	} else
 	{
-		mOriginDownsampling = std::log2(fsInt / 44100);
+		mOriginDownsampling = (int)std::log2(fsInt / 44100);
 		mOriginSamplerate = 44100.;
 	}
 
@@ -61,12 +60,12 @@ inline void ResamplingFilterbank<StageNumber>::init(const double samplerate, con
 	{
 		if (stage < mBlockFilterNumber)
 		{
-			mDownsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage), true, false, 0.02);
-			mUpsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage + 1), false, false, 0.02);
+			mDownsamplingFilters[stage].init(mOriginBlockSize / (int)std::pow(2, stage), true, false, 0.02);
+			mUpsamplingFilters[stage].init(mOriginBlockSize / (int)std::pow(2, stage + 1), false, false, 0.02);
 		} else
 		{
-			mDownsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage), true, true, 0.02);
-			mUpsamplingFilters[stage].init(mOriginBlockSize / std::pow(2, stage + 1), false, true, 0.02);
+			mDownsamplingFilters[stage].init(mOriginBlockSize / (int)std::pow(2, stage), true, true, 0.02);
+			mUpsamplingFilters[stage].init(mOriginBlockSize / (int)std::pow(2, stage + 1), false, true, 0.02);
 		}
 	}
 	// buffers for samplebased / block based intermediate processing
@@ -96,8 +95,7 @@ inline void ResamplingFilterbank<StageNumber>::init(const double samplerate, con
 	}
 }
 
-template<int StageNumber>
-inline void ResamplingFilterbank<StageNumber>::inputBlock(double* const data, const int blockSize)
+void ResamplingFilterbank::inputBlock(BufferType* const data, const int blockSize)
 {
 	mInputBuffer.pushBlock(data, blockSize);
 	mInputDataCounter += blockSize;
@@ -109,7 +107,7 @@ inline void ResamplingFilterbank<StageNumber>::inputBlock(double* const data, co
 		int stageIdx = 0;
 		int filterIdx = 0;
 		// input Resampler to FsOrigin
-		double* dataIn = mInputResamplingHandler.processBlockDown(mInputData.data());
+		auto dataIn = mInputResamplingHandler.processBlockDown(mInputData.data());
 		int blockSize = mInputResamplingHandler.getOutputBlockSizeDown();
 		// save origin data
 		mStageInputBuffers[stageIdx].pushBlock(dataIn, blockSize);
@@ -154,8 +152,7 @@ inline void ResamplingFilterbank<StageNumber>::inputBlock(double* const data, co
 	}
 }
 
-template<int StageNumber>
-inline double* ResamplingFilterbank<StageNumber>::outputBlock(const int blockSize)
+BufferType* ResamplingFilterbank::outputBlock(const int blockSize)
 {
 	mOutputDataCounter += blockSize;
 	if (mOutputDataCounter >= mExpectedBlockSize)
@@ -200,7 +197,7 @@ inline double* ResamplingFilterbank<StageNumber>::outputBlock(const int blockSiz
 
 		// get output of last sample based stage
 		int inputBlockSize = mUpsamplingFilters[filterIdx].getInputBlockSize();
-		double* inBlock = mUpsamplingSampleOutputBuffer.data();
+		auto inBlock = mUpsamplingSampleOutputBuffer.data();
 		if (mSampleFilterNumber <= 0)
 		{
 			mStageOutputBuffers[stageIdx].pullBlock(mUpsamplingSampleOutputBuffer.data(), inputBlockSize);
@@ -218,7 +215,7 @@ inline double* ResamplingFilterbank<StageNumber>::outputBlock(const int blockSiz
 		}
 
 		// input Resampler to FsOrigin
-		double* dataOut = mInputResamplingHandler.processBlockUp(inBlock);
+		auto dataOut = mInputResamplingHandler.processBlockUp(inBlock);
 		// store output
 		mOutputBuffer.pushBlock(dataOut, mExpectedBlockSize);
 	}

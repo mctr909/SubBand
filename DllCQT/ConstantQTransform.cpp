@@ -2,19 +2,18 @@
 
 using namespace Cqt;
 
-template <int B>
-TransformationHandler<B>::TransformationHandler() :
-	mCqtBuffer(B), mFft(Fft_Size), mFftInv(Fft_Size, true)
+TransformationHandler::TransformationHandler(int b) :
+	mCqtBuffer(B), mFft(Fft_Size, false), mFftInv(Fft_Size, true)
 {
 	// hard-coded Hann window as of now
 	calculateWindow(mWindow, Fft_Size);
 	// fft and buffers
-	mFftInputBuffer = mFft.valueVector();
-	mFftBuffer = mFft.spectrumVector();
-	mIfftInputBuffer = mFft.spectrumVector();
-	mIfftOutputBuffer = mFft.valueVector();
+	mFft.valueVector(mFftInputBuffer);
+	mFft.spectrumVector(mFftBuffer);
+	mFft.spectrumVector(mIfftInputBuffer);
+	mFft.valueVector(mIfftOutputBuffer);
 	std::fill(mIfftOutputBuffer.begin(), mIfftOutputBuffer.end(), 0.);
-	mOutputBuffer = mFft.valueVector();
+	mFft.valueVector(mOutputBuffer);
 	std::fill(mOutputBuffer.begin(), mOutputBuffer.end(), 0.);
 	for (int tone = 0; tone < B; tone++)
 	{
@@ -23,26 +22,27 @@ TransformationHandler<B>::TransformationHandler() :
 	// kernels
 	for (int tone = 0; tone < B; tone++)
 	{
-		mKernelArray[tone] = mFft.spectrumVector();
-		mKernelArrayInverse[tone] = mFft.spectrumVector();
+		mFft.spectrumVector(mKernelArray[tone]);
+		mFft.spectrumVector(mKernelArrayInverse[tone]);
 	}
 }
 
-template <int B>
-inline void TransformationHandler<B>::init(const int hopSize)
+inline void TransformationHandler::init(const int hopSize)
 {
 	calculateInverseWindow(mWindow, mInvWindow, Fft_Size, hopSize);
 }
 
-template <int B>
-inline void TransformationHandler<B>::initBuffers(BufferPtr inputBuffer, BufferPtr outputBuffer)
+inline void TransformationHandler::initBuffers(BufferPtr inputBuffer, BufferPtr outputBuffer)
 {
 	mStageInputBuffer = inputBuffer;
 	mStageOutputBuffer = outputBuffer;
 }
 
-template <int B>
-inline void TransformationHandler<B>::initKernels(const CplxVector* const kernelArray, const CplxVector* const kernelArrayInverse, const std::vector<int>* const kernelMask, const std::vector<int>* const kernelMaskInv)
+inline void TransformationHandler::initKernels(
+	const std::vector<CplxVector> kernelArray,
+	const std::vector<CplxVector> kernelArrayInverse,
+	const std::vector<std::vector<int>> kernelMask,
+	const std::vector<std::vector<int>> kernelMaskInv)
 {
 	for (int tone = 0; tone < B; tone++)
 	{
@@ -64,14 +64,12 @@ inline void TransformationHandler<B>::initKernels(const CplxVector* const kernel
 	}
 };
 
-template <int B>
-inline void TransformationHandler<B>::initFs(const int blockSize)
+inline void TransformationHandler::initFs(const int blockSize)
 {
 	mOutputBuffer.resize(Fft_Size + blockSize);
 }
 
-template <int B>
-inline void TransformationHandler<B>::cqtTransform(const ScheduleElement schedule)
+inline void TransformationHandler::cqtTransform(const ScheduleElement schedule)
 {
 	// collect the fft input data
 	mStageInputBuffer->pullDelayBlock(mFftInputBuffer.data(), static_cast<int>(Fft_Size) + schedule.delayOctaveRate - 1, static_cast<int>(Fft_Size));
@@ -80,7 +78,7 @@ inline void TransformationHandler<B>::cqtTransform(const ScheduleElement schedul
 	{
 		mFftInputBuffer[i] *= mWindow[i];
 	}
-	mFft->Exec(mFftInputBuffer, mFftBuffer);
+	mFft.Exec(mFftInputBuffer, mFftBuffer);
 	// scale data
 	for (int i = 0; i < Fft_Domain_Size; i++)
 	{
@@ -98,8 +96,7 @@ inline void TransformationHandler<B>::cqtTransform(const ScheduleElement schedul
 	}
 };
 
-template <int B>
-inline void TransformationHandler<B>::icqtTransform(const ScheduleElement schedule)
+inline void TransformationHandler::icqtTransform(const ScheduleElement schedule)
 {
 	// kernel multiplications
 	for (int i = 0; i < Fft_Domain_Size; i++)
@@ -114,7 +111,7 @@ inline void TransformationHandler<B>::icqtTransform(const ScheduleElement schedu
 			mIfftInputBuffer[idx] += mCqtBuffer[tone] * mKernelArrayInverse[tone][idx];
 		}
 	}
-	mFftInv->Exec(mIfftInputBuffer, mIfftOutputBuffer);
+	mFftInv.Exec(mIfftInputBuffer, mIfftOutputBuffer);
 	// scale and window data
 	for (int i = 0; i < Fft_Size; i++)
 	{
@@ -140,17 +137,15 @@ inline void TransformationHandler<B>::icqtTransform(const ScheduleElement schedu
 	mStageOutputBuffer->pushBlock(mOutputBuffer.data(), Fft_Size + schedule.delayOctaveRate);
 };
 
-template <int B>
-inline void TransformationHandler<B>::calculateWindow(double* const windowData, const int size)
+inline void TransformationHandler::calculateWindow(BufferType* const windowData, const int size)
 {
 	for (int i = 0; i < size; i++)
 	{
-		windowData[i] = (1. / 2.) * (1. - std::cos((2. * Pi<double>() * static_cast<double>(i)) / static_cast<double>(size - 1)));
+		windowData[i] = (1. / 2.) * (1. - std::cos((2. * Pi() * static_cast<double>(i)) / static_cast<double>(size - 1)));
 	}
 }
 
-template <int B>
-inline void TransformationHandler<B>::calculateInverseWindow(double* const windowData, double* const invWindowData, const int size, const int hopSize)
+inline void TransformationHandler::calculateInverseWindow(BufferType* const windowData, BufferType* const invWindowData, const int size, const int hopSize)
 {
 	std::vector<double> windowTmp(size, 0.);
 	for (int i = 0; i < size; i += hopSize)
@@ -166,25 +161,26 @@ inline void TransformationHandler<B>::calculateInverseWindow(double* const windo
 	}
 }
 
-template <int B, int OctaveNumber>
-ConstantQTransform<B, OctaveNumber>::ConstantQTransform()
-: mFft(Fft_Size)
+ConstantQTransform::ConstantQTransform(int b, int octaveNumber)
+: mFft(Fft_Size, false), mFilterbank(octaveNumber)
 {
-	mBinNumber = B * OctaveNumber;
+	B = b;
+	OctaveNumber = octaveNumber;
+	mBinNumber = b * octaveNumber;
 
-	mFftTmpStorage = mFft.spectrumVector();
-	mFftTmpStorageInv = mFft.spectrumVector();
+	mFft.spectrumVector(mFftTmpStorage);
+	mFft.spectrumVector(mFftTmpStorageInv);
 	// configure all the buffer sizes
 	for (int tone = 0; tone < B; tone++)
 	{
-		mKernelStorageTime[tone] = mFft.valueVector();
-		mKernelStorageTimeInv[tone] = mFft.valueVector();
-		mKernelStorage[tone] = mFft.spectrumVector();
-		mKernelStorageInv[tone] = mFft.spectrumVector();
+		mFft.valueVector(mKernelStorageTime[tone]);
+		mFft.valueVector(mKernelStorageTimeInv[tone]);
+		mFft.spectrumVector(mKernelStorage[tone]);
+		mFft.spectrumVector(mKernelStorageInv[tone]);
 	}
 	// generate window function
 	window.resize(Fft_Size);
-	TransformationHandler<B>::calculateWindow(window.data(), Fft_Size);
+	TransformationHandler::calculateWindow(window.data(), Fft_Size);
 	// transformation in/out buffers
 	mKernelFreqs.resize(OctaveNumber);
 	mKernelFreqsInv.resize(OctaveNumber);
@@ -197,8 +193,7 @@ ConstantQTransform<B, OctaveNumber>::ConstantQTransform()
 	}
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::init(int hopSize)
+void ConstantQTransform::init(int hopSize)
 {
 	initKernelFreqs();
 
@@ -214,12 +209,11 @@ inline void ConstantQTransform<B, OctaveNumber>::init(int hopSize)
 	}
 }
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::init(std::vector<int> octaveHopSizes)
+inline void ConstantQTransform::init(std::vector<int> octaveHopSizes)
 {
 	initKernelFreqs();
 
-	assert(octaveHopSizes.size() == OctaveNumber);
+	//assert(octaveHopSizes.size() == OctaveNumber);
 	for (int octave = 0; octave < OctaveNumber; octave++)
 	{
 		int hopSize = Clip<int>(octaveHopSizes.at(octave), 1, Fft_Size);
@@ -232,8 +226,7 @@ inline void ConstantQTransform<B, OctaveNumber>::init(std::vector<int> octaveHop
 	}
 }
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::initFs(double fs, const int blockSize)
+void ConstantQTransform::initFs(double fs, const int blockSize)
 {
 	mFilterbank.init(fs, blockSize, blockSize + Fft_Size);
 	mFs = mFilterbank.getOriginSamplerate();
@@ -256,8 +249,7 @@ inline void ConstantQTransform<B, OctaveNumber>::initFs(double fs, const int blo
 	recalculateKernels();
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::initKernelFreqs()
+inline void ConstantQTransform::initKernelFreqs()
 {
 	/*
 	https://en.wikipedia.org/wiki/Piano_key_frequencies
@@ -275,8 +267,7 @@ inline void ConstantQTransform<B, OctaveNumber>::initKernelFreqs()
 	}
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::calculateKernels()
+inline void ConstantQTransform::calculateKernels()
 {
 	// calculate the time domain kernels
 	for (int k = 0; k < B; k++)
@@ -285,15 +276,15 @@ inline void ConstantQTransform<B, OctaveNumber>::calculateKernels()
 		const double fkInv = mKernelFreqsInv[0][k];
 		for (int n = 0; n < Fft_Size; n++)
 		{
-			mKernelStorageTime[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * window[n] * std::exp(-1i * 2. * Pi<double>() * static_cast<double>(n) * (fk / mSampleRates[0])));
-			mKernelStorageTimeInv[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * window[n] * std::exp(-1i * 2. * Pi<double>() * static_cast<double>(n) * (fkInv / mSampleRates[0])));
+			mKernelStorageTime[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * window[n] * std::exp(-1i * 2. * Pi() * static_cast<double>(n) * (fk / mSampleRates[0])));
+			mKernelStorageTimeInv[k][n] = std::conj((1. / static_cast<double>(Fft_Size)) * window[n] * std::exp(-1i * 2. * Pi() * static_cast<double>(n) * (fkInv / mSampleRates[0])));
 		}
 	}
 	// fft transform kernels and extract necessary (right side of the spectrum) parts
 	for (int k = 0; k < B; k++)
 	{
-		mFft->Exec(mKernelStorageTime[k], mFftTmpStorage);
-		mFft->Exec(mKernelStorageTimeInv[k], mFftTmpStorageInv);
+		mFft.Exec(mKernelStorageTime[k], mFftTmpStorage);
+		mFft.Exec(mKernelStorageTimeInv[k], mFftTmpStorageInv);
 		// extract real part
 		for (int n = 0; n < Fft_Domain_Size; n++)
 		{
@@ -327,16 +318,14 @@ inline void ConstantQTransform<B, OctaveNumber>::calculateKernels()
 	}
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::setConcertPitch(double concertPitch)
+inline void ConstantQTransform::setConcertPitch(double concertPitch)
 {
 	mConcertPitch = concertPitch;
 	initKernelFreqs();
 	recalculateKernels();
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::inputBlock(double* const data, const int blockSize)
+void ConstantQTransform::inputBlock(BufferType* const data, const int blockSize)
 {
 	// check for new kernels
 	if (mNewKernels.load())
@@ -364,20 +353,17 @@ inline void ConstantQTransform<B, OctaveNumber>::inputBlock(double* const data, 
 	}
 };
 
-template <int B, int OctaveNumber>
-inline double* ConstantQTransform<B, OctaveNumber>::outputBlock(const int blockSize)
+inline BufferType* ConstantQTransform::outputBlock(const int blockSize)
 {
 	return mFilterbank.outputBlock(blockSize);
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::cqt(const ScheduleElement schedule)
+void ConstantQTransform::cqt(const ScheduleElement schedule)
 {
 	mTransformationHandlers[schedule.octave].cqtTransform(schedule);
 };
 
-template <int B, int OctaveNumber>
-inline void ConstantQTransform<B, OctaveNumber>::icqt(const ScheduleElement schedule)
+void ConstantQTransform::icqt(const ScheduleElement schedule)
 {
 	mTransformationHandlers[schedule.octave].icqtTransform(schedule);
 };

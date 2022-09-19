@@ -1,25 +1,26 @@
 #include "CircularBuffer.h"
 
-template <typename T>
-inline void CircularBuffer<T>::changeSize(size_t bufferSize)
+CircularBuffer::CircularBuffer(size_t bufferSize) {
+	changeSize(bufferSize);
+}
+
+void CircularBuffer::changeSize(size_t bufferSize)
 {
 	mBufferSize = nextPowOfTwo(bufferSize);
 	mBufferSizeMinOne = mBufferSize - 1;
-	mBuffer.resize(mBufferSize, static_cast<T>(0.));
+	mBuffer.resize(mBufferSize, static_cast<BufferType>(0.0));
 	mWritePointer = 0;
 	mReadPointer = 0;
 }
 
-template <typename T>
-inline void CircularBuffer<T>::pushSample(const T value)
+void CircularBuffer::pushSample(const BufferType value)
 {
 	mWritePointer += 1;
 	mWritePointer = mWritePointer & mBufferSizeMinOne;
 	mBuffer[mWritePointer] = value;
 }
 
-template <typename T>
-inline void CircularBuffer<T>::pushBlock(const T* const data, const int blockSize)
+void CircularBuffer::pushBlock(const BufferType* const data, const int blockSize)
 {
 	for (int i = 0; i < blockSize; i++)
 	{
@@ -29,26 +30,28 @@ inline void CircularBuffer<T>::pushBlock(const T* const data, const int blockSiz
 	}
 }
 
-template <typename T>
-inline T CircularBuffer<T>::pullDelaySample(const int delay)
+BufferType CircularBuffer::pullDelaySample(const int delay)
 {
-	int position = (static_cast<int>(mWritePointer) - delay);
-	if (position < 0)
-	{
-		position += mBufferSize;
+	auto tmp = (static_cast<int>(mWritePointer) - delay);
+	size_t pos;
+	if (tmp < 0) {
+		pos = tmp + mBufferSize;
+	} else {
+		pos = tmp;
 	}
-	return mBuffer[position];
+	return mBuffer[pos];
 }
 
-template <typename T>
-inline void CircularBuffer<T>::pullDelayBlock(T* const data, const int delay, const int blockSize)
+void CircularBuffer::pullDelayBlock(BufferType* const data, const int delay, const int blockSize)
 {
-	int position = (static_cast<int>(mWritePointer) - delay);
-	if (position < 0)
-	{
-		position += mBufferSize;
+	auto tmp = (static_cast<int>(mWritePointer) - delay);
+	size_t pos;
+	if (tmp < 0) {
+		pos = tmp + mBufferSize;
+	} else {
+		pos = tmp;
 	}
-	size_t readPointer = static_cast<size_t>(position);
+	auto readPointer = pos;
 	for (int i = 0; i < blockSize; i++)
 	{
 		data[i] = mBuffer[readPointer];
@@ -57,15 +60,16 @@ inline void CircularBuffer<T>::pullDelayBlock(T* const data, const int delay, co
 	}
 }
 
-template <typename T>
-inline void CircularBuffer<T>::modulateDelayBlock(const T* const data, const int delay, const int blockSize)
+void CircularBuffer::modulateDelayBlock(const BufferType* const data, const int delay, const int blockSize)
 {
-	int position = (static_cast<int>(mWritePointer) - delay);
-	if (position < 0)
-	{
-		position += mBufferSize;
+	auto tmp = (static_cast<int>(mWritePointer) - delay);
+	size_t pos;
+	if (tmp < 0) {
+		pos = tmp + mBufferSize;
+	} else {
+		pos = tmp;
 	}
-	size_t readPointer = static_cast<size_t>(position);
+	auto readPointer = pos;
 	for (int i = 0; i < blockSize; i++)
 	{
 		mBuffer[readPointer] *= data[i];
@@ -74,16 +78,14 @@ inline void CircularBuffer<T>::modulateDelayBlock(const T* const data, const int
 	}
 }
 
-template <typename T>
-inline T CircularBuffer<T>::pullSample()
+BufferType CircularBuffer::pullSample()
 {
 	mReadPointer += 1;
 	mReadPointer = mReadPointer & mBufferSizeMinOne;
 	return mBuffer[mReadPointer];
 }
 
-template <typename T>
-inline void CircularBuffer<T>::pullBlock(T* const data, const int blockSize)
+void CircularBuffer::pullBlock(BufferType* const data, const int blockSize)
 {
 	for (int i = 0; i < blockSize; i++)
 	{
@@ -93,8 +95,7 @@ inline void CircularBuffer<T>::pullBlock(T* const data, const int blockSize)
 	}
 }
 
-template <typename T>
-inline void CircularBuffer<T>::pullBlockAdd(T* const data, const int blockSize)
+void CircularBuffer::pullBlockAdd(BufferType* const data, const int blockSize)
 {
 	for (int i = 0; i < blockSize; i++)
 	{
@@ -104,8 +105,7 @@ inline void CircularBuffer<T>::pullBlockAdd(T* const data, const int blockSize)
 	}
 }
 
-template <typename T>
-inline size_t CircularBuffer<T>::getWriteReadDistance()
+size_t CircularBuffer::getWriteReadDistance()
 {
 	return  mWritePointer >= mReadPointer ? mWritePointer - mReadPointer : mBufferSize - mReadPointer + mWritePointer;
 }

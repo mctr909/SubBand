@@ -19,12 +19,10 @@ namespace Cqt
     constexpr double WindowEnergyLossCompensation{ 1.63 }; // Fixed for Hanning window as of now
     constexpr double WindowAmplitudeLossCompensation{ 2.0 }; // Fixed for Hanning window as of now
 
-    typedef std::vector<std::complex<double>> CplxVector;
-    typedef std::vector<double> RealVector;
+    typedef std::vector<std::complex<BufferType>> CplxVector;
+    typedef std::vector<BufferType> RealVector;
     typedef RealVector TimeDataType;
     typedef CplxVector CqtBufferType;
-
-	class FFT;
 
     /*
     Structure to schedule transformation timings.
@@ -39,10 +37,9 @@ namespace Cqt
 	/*
 	Handles the transformations of the single octaves.
 	*/
-	template <int B>
 	class TransformationHandler {
 	public:
-		TransformationHandler();
+		TransformationHandler(int b);
 		~TransformationHandler() = default;
 
 		inline CqtBufferType* getCqtBuffer() { return &mCqtBuffer; };
@@ -50,23 +47,28 @@ namespace Cqt
 
 		void init(const int hopSize);
 		void initBuffers(BufferPtr inputBuffer = nullptr, BufferPtr outputBuffer = nullptr);
-		void initKernels(const CplxVector* const kernelArray, const CplxVector* const kernelArrayInverse, const std::vector<int>* const kernelMask, const std::vector<int>* const kernelMaskInv);
+		void initKernels(
+			const std::vector<CplxVector> kernelArray,
+			const std::vector<CplxVector> kernelArrayInverse,
+			const std::vector<std::vector<int>> kernelMask,
+			const std::vector<std::vector<int>> kernelMaskInv);
 		void initFs(const int blockSize);
 
 		void cqtTransform(const ScheduleElement schedule);
 		void icqtTransform(const ScheduleElement schedule);
 
-		static void calculateWindow(double* const windowData, const int size);
-		static void calculateInverseWindow(double* const windowData, double* const invWindowData, const int size, const int hopSize);
+		static void calculateWindow(BufferType* const windowData, const int size);
+		static void calculateInverseWindow(BufferType* const windowData, BufferType* const invWindowData, const int size, const int hopSize);
 
 	private:
-		double mWindow[Fft_Size];
-		double mInvWindow[Fft_Size];
+		int B;
+		BufferType mWindow[Fft_Size];
+		BufferType mInvWindow[Fft_Size];
 		// kernel storage
-		CplxVector mKernelArray[B]; // mB x Fft_Domain_Size
-		CplxVector mKernelArrayInverse[B]; // mB x Fft_Domain_Size
-		std::vector<int> mKernelMask[B]; // mB x Fft_Domain_Size
-		std::vector<int> mKernelMaskInv[B]; // mB x Fft_Domain_Size
+		std::vector<CplxVector> mKernelArray; //[B] ; // mB x Fft_Domain_Size
+		std::vector<CplxVector> mKernelArrayInverse; //[B] ; // mB x Fft_Domain_Size
+		std::vector<std::vector<int>> mKernelMask; //[B]; // mB x Fft_Domain_Size
+		std::vector<std::vector<int>> mKernelMaskInv; //[B]; // mB x Fft_Domain_Size
 
 		// scaling 
 		const double mFftScalingFactor{ 1. / std::sqrt(static_cast<double>(Fft_Size)) };
@@ -85,13 +87,15 @@ namespace Cqt
 		BufferPtr mStageOutputBuffer;
 	};
 
+#ifdef __cplusplus
+	extern "C" {
+#endif
 	/*
 	Main CQT class
 	*/
-	template <int B, int OctaveNumber>
 	class ConstantQTransform {
 	public:
-	 	ConstantQTransform();
+	 	ConstantQTransform(int b, int octaveNumber);
 		~ConstantQTransform() = default;
 
 		inline std::vector<ScheduleElement>& getCqtSchedule() { return mCqtSchedule; };
@@ -111,8 +115,8 @@ namespace Cqt
 		void initFs(double fs, const int blockSize);
 		void setConcertPitch(double concertPitch);
 
-		void inputBlock(double* const data, const int blockSize);
-		double* outputBlock(const int blockSize);
+		void inputBlock(BufferType* const data, const int blockSize);
+		BufferType* outputBlock(const int blockSize);
 		void cqt(const ScheduleElement schedule);
 		void icqt(const ScheduleElement schedule);
 
@@ -120,19 +124,21 @@ namespace Cqt
 		void initKernelFreqs();
 		void calculateKernels();
 
+		int B;
+		int OctaveNumber;
 		double mConcertPitch{ 440. };
 		int mBinNumber;
-		int mOverlaps[OctaveNumber];
-		double mLatencyMs[OctaveNumber];
-		size_t mLatencySamples[OctaveNumber];
-		int mHopSizes[OctaveNumber];
+		std::vector<int> mOverlaps; //[OctaveNumber];
+		std::vector<double> mLatencyMs; //[OctaveNumber] ;
+		std::vector<size_t> mLatencySamples; //[OctaveNumber] ;
+		std::vector<int> mHopSizes; //[OctaveNumber] ;
 		double mFs;
-		double mSampleRates[OctaveNumber];
-		double mSampleRatesByOriginRate[OctaveNumber];
+		std::vector<double> mSampleRates; //[OctaveNumber] ;
+		std::vector<double> mSampleRatesByOriginRate; //[OctaveNumber] ;
 
-		TransformationHandler<B> mTransformationHandlers[OctaveNumber];
-		ResamplingFilterbank<OctaveNumber> mFilterbank;
-		size_t mSampleCounters[OctaveNumber];
+		std::vector<TransformationHandler> mTransformationHandlers; //[OctaveNumber];
+		ResamplingFilterbank mFilterbank;
+		std::vector<size_t> mSampleCounters; //[OctaveNumber] ;
 
 		std::vector<ScheduleElement> mCqtSchedule;
 
@@ -140,12 +146,12 @@ namespace Cqt
 		CplxVector mFftTmpStorage;
 		CplxVector mFftTmpStorageInv;
 
-		CplxVector mKernelStorage[B];
-		CplxVector mKernelStorageInv[B];
-		std::vector<int> mKernelMask[B];
-		std::vector<int> mKernelMaskInv[B];
-		CplxVector mKernelStorageTime[B];
-		CplxVector mKernelStorageTimeInv[B];
+		std::vector<CplxVector> mKernelStorage; //[B];
+		std::vector<CplxVector> mKernelStorageInv; //[B];
+		std::vector<std::vector<int>> mKernelMask; //[B];
+		std::vector<std::vector<int>> mKernelMaskInv; //[B];
+		std::vector<CplxVector> mKernelStorageTime; //[B];
+		std::vector<CplxVector> mKernelStorageTimeInv; //[B];
 		RealVector window;
 		std::atomic<bool> mNewKernels{ true };
 
@@ -153,3 +159,6 @@ namespace Cqt
 		std::vector<std::vector<double>> mKernelFreqsInv;
 	};
 };
+#ifdef __cplusplus
+}
+#endif

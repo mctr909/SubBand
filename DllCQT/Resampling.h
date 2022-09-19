@@ -58,10 +58,9 @@ namespace Cqt {
 		FloatType mYm1{ 0. };
 	};
 
-	template <typename FloatType, size_t AllpassNumber>
 	class HalfBandLowpass {
 	public:
-		HalfBandLowpass();
+		HalfBandLowpass(size_t allpassNumber);
 		~HalfBandLowpass() = default;
 
 		int getOutputBlockSize() { return mTargetBlockSize; };
@@ -74,35 +73,36 @@ namespace Cqt {
 		/*
 		Call with 2 * fs_target.
 		*/
-		FloatType processSampleDown(const FloatType sample, bool& isSampleRet);
+		BufferType processSampleDown(const BufferType sample, bool& isSampleRet);
 		/*
 		Call with 2 * fs_original.
 		*/
-		FloatType processSampleUp(const FloatType sample);
-		FloatType* processBlockDown(FloatType* const inputBlock, const int inputBlockSize);
-		FloatType* processBlockUp(FloatType* const inputBlock, const int inputBlockSize);
+		BufferType processSampleUp(const BufferType sample);
+		BufferType* processBlockDown(BufferType* const inputBlock, const int inputBlockSize);
+		BufferType* processBlockUp(BufferType* const inputBlock, const int inputBlockSize);
 
 	private:
+		int AllpassNumber;
 		bool mIsSample = false;
 		double mTransitionBandwidth;
 		size_t mAllpassNumberTotal;
 		size_t mFilterOrder;
 		std::vector<double> mCoefficients;
 
-		FirstOrderAllpass<FloatType> mDirectPathFilters[AllpassNumber];
-		FirstOrderAllpass<FloatType> mDelayPathFilters[AllpassNumber];
-		Delay<FloatType> mDelay;
+		std::vector<FirstOrderAllpass<double>> mDirectPathFilters; //[AllpassNumber];
+		std::vector<FirstOrderAllpass<double>> mDelayPathFilters; //[AllpassNumber];
+		Delay<double> mDelay;
 
 		int mTargetBlockSize{ 0 };
 		int mInputBlockSize{ 1 };
 		int mFilterBufferSize{ 0 };
 
-		FloatType mDelayPathStorage = 0.;
-		FloatType mDelayPathInput = 0.;
-		FloatType mDirectPathInput = 0.;
-		std::vector<FloatType> mDirectPathBuffer;
-		std::vector<FloatType> mDelayPathBuffer;
-		std::vector<FloatType> mOutputBlock;
+		double mDelayPathStorage = 0.;
+		double mDelayPathInput = 0.;
+		double mDirectPathInput = 0.;
+		std::vector<double> mDirectPathBuffer;
+		std::vector<double> mDelayPathBuffer;
+		std::vector<BufferType> mOutputBlock;
 
 		std::vector<double> filterDesign();
 	};
@@ -120,10 +120,9 @@ namespace Cqt {
 		DownUp
 	};
 
-	template <typename FloatType, size_t AllpassNumber>
 	class ResamplingHandler {
 	public:
-		ResamplingHandler(double transitionBandwidth = 0.02);
+		ResamplingHandler(int allpassNumber, double transitionBandwidth = 0.02);
 		~ResamplingHandler();
 
 		int getOutputBlockSizeUp() { return mTargetBlockSizeUp; };
@@ -138,15 +137,16 @@ namespace Cqt {
 		/*
 		Called with 2*fs target. isSampleRet indicates whether sample is relevant.
 		*/
-		FloatType processSampleDown(FloatType sample, bool& isSampleRet);
+		BufferType processSampleDown(BufferType sample, bool& isSampleRet);
 		/*
 		Called with target samplerate.
 		*/
-		FloatType processSampleUp(FloatType sample);
-		FloatType* processBlockDown(FloatType* const  inputBlock);
-		FloatType* processBlockUp(FloatType* const inputBlock);
+		BufferType processSampleUp(BufferType sample);
+		BufferType* processBlockDown(BufferType* const  inputBlock);
+		BufferType* processBlockUp(BufferType* const inputBlock);
 
 	private:
+		int AllpassNumber;
 		double mTransitionBandwidth;
 		int mPowTwoFactor;
 		int mResamplingFactor;
@@ -154,10 +154,10 @@ namespace Cqt {
 		int mInputBlockSizeUp{ 0 };
 		int mTargetBlockSizeUp{ 0 };
 		int mTargetBlockSizeDown{ 0 };
-		std::vector<HalfBandLowpass<FloatType, AllpassNumber>*> mDownFilters;
-		std::vector<HalfBandLowpass<FloatType, AllpassNumber>*> mUpFilters;
+		std::vector<HalfBandLowpass*> mDownFilters;
+		std::vector<HalfBandLowpass*> mUpFilters;
 		// sample based storage
 		std::vector<bool> mIsSample;
-		std::vector<FloatType> mUpsamplingStorage;
+		std::vector<double> mUpsamplingStorage;
 	};
 };

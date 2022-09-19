@@ -2,10 +2,11 @@
 
 namespace Cqt
 {
-    template<typename FloatType>
-    static inline FloatType Pi()
+    typedef double BufferType;
+
+    static inline BufferType Pi()
     {
-        return static_cast<FloatType>(3.14159265358979323846);
+        return static_cast<BufferType>(3.14159265358979323846);
     }
 
     template<typename T>
