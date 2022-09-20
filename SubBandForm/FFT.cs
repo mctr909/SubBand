@@ -1,4 +1,6 @@
-﻿class FFT {
+﻿using System;
+
+class FFT {
 	readonly int SIZE;
 	readonly int BITS;
 	readonly double[] COS;

@@ -1,4 +1,6 @@
-﻿class WaveIn : WaveLib {
+﻿using System;
+
+class WaveIn : WaveLib {
     readonly int FFT_N;
     readonly int READ_LEN;
     double mSigma;

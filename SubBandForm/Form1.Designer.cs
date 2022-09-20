@@ -1,4 +1,6 @@
-﻿namespace SubBandForm {
+﻿using System.Windows.Forms;
+
+namespace SubBandForm {
     partial class Form1 {
         /// <summary>
         ///  Required designer variable.

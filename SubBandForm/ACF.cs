@@ -1,4 +1,6 @@
-﻿class ACF {
+﻿using System;
+
+class ACF {
     readonly double MIN;
     readonly int FFT_N;
     double[] mRe;
@@ -27,7 +29,7 @@
     void exec(double[] input, double[] output) {
         var N = mRe.Length;
         Array.Copy(input, 0, mRe, 0, N);
-        Array.Clear(mIm);
+        Array.Clear(mIm, 0, mIm.Length);
         mFFT.Exec(mRe, mIm);
         for (int i = 0; i < N; i++) {
             var re = (mRe[i] * mRe[i]) + (mIm[i] * mIm[i]);
@@ -60,8 +62,8 @@
     }
 
     public void Spec(double[] input, double[] output) {
-        Array.Clear(mRe2);
-        Array.Clear(mIm2);
+        Array.Clear(mRe2, 0, mRe2.Length);
+        Array.Clear(mIm2, 0, mIm2.Length);
         Array.Copy(input, 0, mRe2, 0, input.Length);
         mSpec.Exec(mRe2, mIm2);
         var N = mRe2.Length / 2;

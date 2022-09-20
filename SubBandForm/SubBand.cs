@@ -1,4 +1,6 @@
-﻿class SubBand {
+﻿using System;
+
+class SubBand {
 	readonly int SIZE;
 	readonly int SIZE_H;
 	readonly int SIZE_Q;
