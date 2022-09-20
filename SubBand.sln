@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.32901.82
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinmmTest", "WinmmTest\WinmmTest.csproj", "{76D7B3E9-AFF2-40B2-9749-BFAFFBCFD23D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E066221D-2DE8-438F-B94C-9DF3CF184E63} = {E066221D-2DE8-438F-B94C-9DF3CF184E63}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Winmm", "Winmm\Winmm.vcxproj", "{E066221D-2DE8-438F-B94C-9DF3CF184E63}"
 EndProject
