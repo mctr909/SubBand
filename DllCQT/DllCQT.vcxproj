@@ -72,9 +72,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>C:\Users\ris\Desktop\SubBand\DllCQT;$(IncludePath)</IncludePath>
+    <OutDir>..\CQT\bin\Debug\net6.0-windows</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>C:\Users\ris\Desktop\SubBand\DllCQT;$(IncludePath)</IncludePath>
+    <OutDir>..\CQT\bin\Release\net6.0-windows</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
