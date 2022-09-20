@@ -25,21 +25,22 @@ void CALLBACK waveInProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD dw
 DWORD readBufferTask(LPVOID* param);
 
 /******************************************************************************/
-void wavein_open(
+__declspec(dllexport) void wavein_open(
     int sampleRate,
     int bits,
+    int channels,
     int bufferLength,
     int bufferCount,
-    void(*fpReadProc)(void*)
+    void (*fpReadProc)(void*)
 ) {
     wavein_close();
     gBufferLength = bufferLength;
     gBufferCount = bufferCount;
     gfpReadProc = fpReadProc;
-    open(sampleRate, bits, 2);
+    open(sampleRate, bits, channels);
 }
 
-void wavein_close() {
+__declspec(dllexport) void wavein_close() {
     close();
 }
 

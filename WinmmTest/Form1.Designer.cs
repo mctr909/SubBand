@@ -29,13 +29,25 @@ namespace WinmmTest
         /// </summary>
         private void InitializeComponent()
         {
+            this.btnWaveIn = new System.Windows.Forms.Button();
             this.SuspendLayout();
+            // 
+            // btnWaveIn
+            // 
+            this.btnWaveIn.Location = new System.Drawing.Point(12, 12);
+            this.btnWaveIn.Name = "btnWaveIn";
+            this.btnWaveIn.Size = new System.Drawing.Size(75, 23);
+            this.btnWaveIn.TabIndex = 0;
+            this.btnWaveIn.Text = "WaveIn";
+            this.btnWaveIn.UseVisualStyleBackColor = true;
+            this.btnWaveIn.Click += new System.EventHandler(this.btnWaveIn_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(258, 232);
+            this.Controls.Add(this.btnWaveIn);
             this.Name = "Form1";
             this.Text = "Form1";
             this.ResumeLayout(false);
@@ -43,6 +55,8 @@ namespace WinmmTest
         }
 
         #endregion
+
+        private System.Windows.Forms.Button btnWaveIn;
     }
 }
 

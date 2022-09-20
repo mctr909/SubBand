@@ -12,9 +12,17 @@ namespace WinmmTest
 {
     public partial class Form1 : Form
     {
+        DllTest mDll;
+
         public Form1()
         {
             InitializeComponent();
+            mDll = new DllTest();
+        }
+
+        private void btnWaveIn_Click(object sender, EventArgs e)
+        {
+            mDll.WaveInOpen();
         }
     }
 }
