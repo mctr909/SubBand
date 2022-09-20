@@ -9,10 +9,8 @@ namespace Cqt {
 		Delay() = default;
 		~Delay() = default;
 
-		inline void processBlock(BufferType* const data, const int blockSize)
-		{
-			for (int i = 0; i < blockSize; i++)
-			{
+		inline void processBlock(BufferType* const data, const int blockSize) {
+			for (int i = 0; i < blockSize; i++) {
 				const BufferType input = data[i];
 				data[i] = mStorage;
 				mStorage = input;
@@ -27,23 +25,19 @@ namespace Cqt {
 		FirstOrderAllpass() = default;
 		~FirstOrderAllpass() = default;
 
-		inline void initCoeff(BufferType ak)
-		{
+		inline void initCoeff(BufferType ak) {
 			mAk = static_cast<BufferType>(ak);
 		};
 
-		inline BufferType processSample(const BufferType sample)
-		{
+		inline BufferType processSample(const BufferType sample) {
 			const BufferType y = mAk * (sample - mYm1) + mXm1;
 			mXm1 = sample;
 			mYm1 = y;
 			return y;
 		};
 
-		inline void processBlock(BufferType* const samples, const int blocksize)
-		{
-			for (int i = 0; i < blocksize; i++)
-			{
+		inline void processBlock(BufferType* const samples, const int blocksize) {
+			for (int i = 0; i < blocksize; i++) {
 				const BufferType sample = samples[i];
 				samples[i] = mAk * (sample - mYm1) + mXm1;
 				mXm1 = sample;
@@ -58,22 +52,22 @@ namespace Cqt {
 
 	class HalfBandLowpass {
 	public:
-		HalfBandLowpass(size_t allpassNumber);
+		HalfBandLowpass(int allpassNumber);
 		~HalfBandLowpass() = default;
 
 		int getOutputBlockSize() { return mTargetBlockSize; };
 		int getInputBlockSize() { return mInputBlockSize; };
 
-		/*
-		Initialize the filters and allocate memory. Has to get called before processing starts.
+		/**
+		* Initialize the filters and allocate memory. Has to get called before processing starts.
 		*/
 		bool init(const int expectedBlockSize = 128, bool isDownsampling = true, bool isSampleBased = false, double transitionBandwidth = 0.02);
-		/*
-		Call with 2 * fs_target.
+		/**
+		* Call with 2 * fs_target.
 		*/
 		BufferType processSampleDown(const BufferType sample, bool& isSampleRet);
-		/*
-		Call with 2 * fs_original.
+		/**
+		* Call with 2 * fs_original.
 		*/
 		BufferType processSampleUp(const BufferType sample);
 		BufferType* processBlockDown(BufferType* const inputBlock, const int inputBlockSize);
@@ -105,13 +99,11 @@ namespace Cqt {
 		std::vector<double> filterDesign();
 	};
 
-	enum class ProcessConfig
-	{
+	enum class ProcessConfig {
 		Sample = 0,
 		Block
 	};
-	enum class DirectionConfig
-	{
+	enum class DirectionConfig {
 		Up = 0,
 		Down,
 		UpDown,

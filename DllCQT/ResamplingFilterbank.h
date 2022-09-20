@@ -3,9 +3,8 @@
 #include "Resampling.h"
 #include "CircularBuffer.h"
 
-namespace Cqt
-{
-    typedef CircularBuffer* BufferPtr;
+namespace Cqt {
+	typedef CircularBuffer* BufferPtr;
 
 	class ResamplingFilterbank {
 	public:
