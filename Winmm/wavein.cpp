@@ -5,6 +5,7 @@
 #pragma comment (lib, "winmm.lib")
 
 /******************************************************************************/
+HANDLE           ghThread;
 DWORD            gThreadId;
 CRITICAL_SECTION gcsBufferLock;
 HWAVEIN          ghWaveIn = NULL;
@@ -17,11 +18,13 @@ int gBufferLength = 0;
 volatile int gReadCount = 0;
 volatile int gReadIndex = 0;
 volatile int gWriteIndex = 0;
+bool gStop = false;
+bool gThreadStopped = true;
 
 /******************************************************************************/
 BOOL open(int sampleRate, int bits, int channelCount);
 BOOL close();
-void CALLBACK waveInProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam);
+void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam);
 DWORD readBufferTask(LPVOID* param);
 
 /******************************************************************************/
@@ -91,8 +94,10 @@ BOOL open(int sampleRate, int bits, int channelCount) {
         waveInAddBuffer(ghWaveIn, gppWaveHdr[n], sizeof(WAVEHDR));
     }
     //
-    auto hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readBufferTask, NULL, 0, &gThreadId);
-    SetThreadPriority(hThread, THREAD_PRIORITY_HIGHEST);
+    gStop = false;
+    gThreadStopped = false;
+    ghThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readBufferTask, NULL, 0, &gThreadId);
+    SetThreadPriority(ghThread, THREAD_PRIORITY_HIGHEST);
     waveInStart(ghWaveIn);
     return TRUE;
 }
@@ -102,16 +107,20 @@ BOOL close() {
         return TRUE;
     }
     //
-    waveInStop(ghWaveIn);
+    gStop = true;
+    while (!gThreadStopped) {
+        Sleep(100);
+    }
+    //
+    waveInReset(ghWaveIn);
     for (int n = 0; n < gBufferCount; ++n) {
         waveInUnprepareHeader(ghWaveIn, gppWaveHdr[n], sizeof(WAVEHDR));
     }
-    waveInReset(ghWaveIn);
     waveInClose(ghWaveIn);
     return TRUE;
 }
 
-void CALLBACK waveInProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam) {
+void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam) {
     switch (uMsg) {
     case MM_WIM_OPEN:
         break;
@@ -120,17 +129,18 @@ void CALLBACK waveInProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD dw
             free(gppWaveHdr[b]->lpData);
             gppWaveHdr[b]->lpData = NULL;
         }
-        free(gppWaveHdr);
-        gppWaveHdr = NULL;
         break;
     case MM_WIM_DATA:
+        if (gStop) {
+            return;
+        }
         EnterCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
         if (gReadCount < 1) {
             LeaveCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
             return;
         }
         {
-            waveInAddBuffer(ghWaveIn, gppWaveHdr[gWriteIndex], sizeof(WAVEHDR));
+            waveInAddBuffer(hwi, gppWaveHdr[gWriteIndex], sizeof(WAVEHDR));
             gWriteIndex = (gWriteIndex + 1) % gBufferCount;
             gReadCount--;
         }
@@ -142,7 +152,7 @@ void CALLBACK waveInProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD dw
 }
 
 DWORD readBufferTask(LPVOID* param) {
-    while (TRUE) {
+    while (!gStop) {
         if (NULL == gppWaveHdr || NULL == gppWaveHdr[0] || NULL == gppWaveHdr[0]->lpData) {
             Sleep(100);
             continue;
@@ -160,5 +170,7 @@ DWORD readBufferTask(LPVOID* param) {
         }
         LeaveCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
     }
+    gThreadStopped = true;
+    ExitThread(0);
     return 0;
 }
