@@ -50,6 +50,21 @@ namespace WinmmTest
             }
         }
 
+        private void btnWaveOut_Click(object sender, EventArgs e)
+        {
+            switch (btnWaveOut.Text)
+            {
+                case "WaveOutOpen":
+                    mDll.WaveOutOpen();
+                    btnWaveOut.Text = "WaveOutClose";
+                    break;
+                case "WaveOutClose":
+                    mDll.WaveOutClose();
+                    btnWaveOut.Text = "WaveOutOpen";
+                    break;
+            }
+        }
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             if (mSizeChange)

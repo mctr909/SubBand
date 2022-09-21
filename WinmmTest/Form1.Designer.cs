@@ -33,6 +33,7 @@ namespace WinmmTest
             this.btnWaveIn = new System.Windows.Forms.Button();
             this.picWaveIn = new System.Windows.Forms.PictureBox();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.btnWaveOut = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.picWaveIn)).BeginInit();
             this.SuspendLayout();
             // 
@@ -58,11 +59,22 @@ namespace WinmmTest
             // 
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
+            // btnWaveOut
+            // 
+            this.btnWaveOut.Location = new System.Drawing.Point(12, 206);
+            this.btnWaveOut.Name = "btnWaveOut";
+            this.btnWaveOut.Size = new System.Drawing.Size(90, 26);
+            this.btnWaveOut.TabIndex = 2;
+            this.btnWaveOut.Text = "WaveOutOpen";
+            this.btnWaveOut.UseVisualStyleBackColor = true;
+            this.btnWaveOut.Click += new System.EventHandler(this.btnWaveOut_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(258, 232);
+            this.ClientSize = new System.Drawing.Size(258, 263);
+            this.Controls.Add(this.btnWaveOut);
             this.Controls.Add(this.picWaveIn);
             this.Controls.Add(this.btnWaveIn);
             this.MinimumSize = new System.Drawing.Size(128, 128);
@@ -79,6 +91,7 @@ namespace WinmmTest
         private System.Windows.Forms.Button btnWaveIn;
         private System.Windows.Forms.PictureBox picWaveIn;
         private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Button btnWaveOut;
     }
 }
 

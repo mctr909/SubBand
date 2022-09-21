@@ -148,12 +148,14 @@
   <ItemGroup>
     <ClCompile Include="circular_buffer.cpp" />
     <ClCompile Include="wavein.cpp" />
+    <ClCompile Include="waveout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="circular_buffer.h" />
     <ClInclude Include="fft.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="wavein.h" />
+    <ClInclude Include="waveout.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

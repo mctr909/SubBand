@@ -5,27 +5,24 @@
 #pragma comment (lib, "winmm.lib")
 
 /******************************************************************************/
-HANDLE           ghThread;
-DWORD            gThreadId;
-CRITICAL_SECTION gcsBufferLock;
+DWORD            gWaveInThreadId;
+CRITICAL_SECTION gcsWaveInLock;
 HWAVEIN          ghWaveIn = NULL;
-WAVEFORMATEX     gWaveFmt = { 0 };
-WAVEHDR**        gppWaveHdr = NULL;
+WAVEFORMATEX     gWaveInFmt = { 0 };
+WAVEHDR**        gppWaveInHdr = NULL;
 
 void (*gfpReadProc)(void*) = NULL;
-int gBufferCount = 0;
-int gBufferLength = 0;
-volatile int gReadCount = 0;
-volatile int gReadIndex = 0;
-volatile int gWriteIndex = 0;
-bool gStop = false;
-bool gThreadStopped = true;
+int gWaveInBufferCount = 0;
+int gWaveInBufferLength = 0;
+int gWaveInReadCount = 0;
+int gWaveInReadIndex = 0;
+int gWaveInAddBufferIndex = 0;
+bool gWaveInStop = false;
+bool gWaveInStopped = true;
 
 /******************************************************************************/
-BOOL open(int sampleRate, int bits, int channelCount);
-BOOL close();
-void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam);
-DWORD readBufferTask(LPVOID* param);
+void CALLBACK wavein_proc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam);
+DWORD wavein_task(LPVOID* param);
 
 /******************************************************************************/
 __declspec(dllexport) void wavein_open(
@@ -37,140 +34,123 @@ __declspec(dllexport) void wavein_open(
     void (*fpReadProc)(void*)
 ) {
     wavein_close();
-    gBufferLength = bufferLength;
-    gBufferCount = bufferCount;
+    //
+    gWaveInBufferLength = bufferLength;
+    gWaveInBufferCount = bufferCount;
     gfpReadProc = fpReadProc;
-    open(sampleRate, bits, channels);
-}
-
-__declspec(dllexport) void wavein_close() {
-    close();
-}
-
-/******************************************************************************/
-BOOL open(int sampleRate, int bits, int channelCount) {
-    if (NULL != ghWaveIn) {
-        if (!close()) {
-            return FALSE;
-        }
-    }
     if (NULL == gfpReadProc) {
-        return FALSE;
+        return;
     }
     //
-    gReadCount = 0;
-    gReadIndex = 0;
-    gWriteIndex = 0;
+    gWaveInReadCount = 0;
+    gWaveInReadIndex = 0;
+    gWaveInAddBufferIndex = 0;
     //
-    gWaveFmt.wFormatTag = 32 == bits ? 3 : 1;
-    gWaveFmt.nChannels = channelCount;
-    gWaveFmt.wBitsPerSample = (WORD)bits;
-    gWaveFmt.nSamplesPerSec = (DWORD)sampleRate;
-    gWaveFmt.nBlockAlign = gWaveFmt.nChannels * gWaveFmt.wBitsPerSample / 8;
-    gWaveFmt.nAvgBytesPerSec = gWaveFmt.nSamplesPerSec * gWaveFmt.nBlockAlign;
+    gWaveInFmt.wFormatTag = 32 == bits ? 3 : 1;
+    gWaveInFmt.nChannels = channels;
+    gWaveInFmt.wBitsPerSample = (WORD)bits;
+    gWaveInFmt.nSamplesPerSec = (DWORD)sampleRate;
+    gWaveInFmt.nBlockAlign = gWaveInFmt.nChannels * gWaveInFmt.wBitsPerSample / 8;
+    gWaveInFmt.nAvgBytesPerSec = gWaveInFmt.nSamplesPerSec * gWaveInFmt.nBlockAlign;
     //
     if (MMSYSERR_NOERROR != waveInOpen(
         &ghWaveIn,
         WAVE_MAPPER,
-        &gWaveFmt,
-        (DWORD_PTR)waveInProc,
-        (DWORD_PTR)gppWaveHdr,
+        &gWaveInFmt,
+        (DWORD_PTR)wavein_proc,
+        (DWORD_PTR)gppWaveInHdr,
         CALLBACK_FUNCTION
     )) {
-        return FALSE;
+        return;
     }
     //
-    InitializeCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
+    InitializeCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
     //
-    gppWaveHdr = (PWAVEHDR*)calloc(gBufferCount, sizeof(PWAVEHDR));
-    for (int n = 0; n < gBufferCount; ++n) {
-        gppWaveHdr[n] = (PWAVEHDR)calloc(1, sizeof(WAVEHDR));
-        gppWaveHdr[n]->dwBufferLength = (DWORD)gBufferLength * gWaveFmt.nBlockAlign;
-        gppWaveHdr[n]->dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
-        gppWaveHdr[n]->dwLoops = 0;
-        gppWaveHdr[n]->dwUser = 0;
-        gppWaveHdr[n]->lpData = (LPSTR)calloc(gBufferLength, gWaveFmt.nBlockAlign);
-        waveInPrepareHeader(ghWaveIn, gppWaveHdr[n], sizeof(WAVEHDR));
-        waveInAddBuffer(ghWaveIn, gppWaveHdr[n], sizeof(WAVEHDR));
+    gppWaveInHdr = (PWAVEHDR*)calloc(gWaveInBufferCount, sizeof(PWAVEHDR));
+    for (int n = 0; n < gWaveInBufferCount; ++n) {
+        gppWaveInHdr[n] = (PWAVEHDR)calloc(1, sizeof(WAVEHDR));
+        gppWaveInHdr[n]->dwBufferLength = (DWORD)gWaveInBufferLength * gWaveInFmt.nBlockAlign;
+        gppWaveInHdr[n]->dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
+        gppWaveInHdr[n]->dwLoops = 0;
+        gppWaveInHdr[n]->dwUser = 0;
+        gppWaveInHdr[n]->lpData = (LPSTR)calloc(gWaveInBufferLength, gWaveInFmt.nBlockAlign);
+        waveInPrepareHeader(ghWaveIn, gppWaveInHdr[n], sizeof(WAVEHDR));
+        waveInAddBuffer(ghWaveIn, gppWaveInHdr[n], sizeof(WAVEHDR));
     }
     //
-    gStop = false;
-    gThreadStopped = false;
-    ghThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)readBufferTask, NULL, 0, &gThreadId);
-    SetThreadPriority(ghThread, THREAD_PRIORITY_HIGHEST);
+    gWaveInStop = false;
+    gWaveInStopped = false;
+    auto threadHandle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)wavein_task, NULL, 0, &gWaveInThreadId);
+    SetThreadPriority(threadHandle, THREAD_PRIORITY_HIGHEST);
     waveInStart(ghWaveIn);
-    return TRUE;
 }
 
-BOOL close() {
+__declspec(dllexport) void wavein_close() {
     if (NULL == ghWaveIn) {
-        return TRUE;
+        return;
     }
     //
-    gStop = true;
-    while (!gThreadStopped) {
+    gWaveInStop = true;
+    while (!gWaveInStopped) {
         Sleep(100);
     }
     //
     waveInReset(ghWaveIn);
-    for (int n = 0; n < gBufferCount; ++n) {
-        waveInUnprepareHeader(ghWaveIn, gppWaveHdr[n], sizeof(WAVEHDR));
+    for (int n = 0; n < gWaveInBufferCount; ++n) {
+        waveInUnprepareHeader(ghWaveIn, gppWaveInHdr[n], sizeof(WAVEHDR));
     }
     waveInClose(ghWaveIn);
-    return TRUE;
 }
 
-void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam) {
+/******************************************************************************/
+void CALLBACK wavein_proc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dwParam1, DWORD dwParam) {
     switch (uMsg) {
     case MM_WIM_OPEN:
         break;
     case MM_WIM_CLOSE:
-        for (int b = 0; b < gBufferCount; ++b) {
-            free(gppWaveHdr[b]->lpData);
-            gppWaveHdr[b]->lpData = NULL;
+        for (int b = 0; b < gWaveInBufferCount; ++b) {
+            free(gppWaveInHdr[b]->lpData);
+            gppWaveInHdr[b]->lpData = NULL;
         }
         break;
     case MM_WIM_DATA:
-        if (gStop) {
+        if (gWaveInStop) {
             return;
         }
-        EnterCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
-        if (gReadCount < 1) {
-            LeaveCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
+        EnterCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
+        if (gWaveInReadCount < 1) {
+            LeaveCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
             return;
         }
         {
-            waveInAddBuffer(hwi, gppWaveHdr[gWriteIndex], sizeof(WAVEHDR));
-            gWriteIndex = (gWriteIndex + 1) % gBufferCount;
-            gReadCount--;
+            waveInAddBuffer(hwi, gppWaveInHdr[gWaveInAddBufferIndex++], sizeof(WAVEHDR));
+            gWaveInAddBufferIndex %= gWaveInBufferCount;
+            gWaveInReadCount--;
         }
-        LeaveCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
+        LeaveCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
         break;
     default:
         break;
     }
 }
 
-DWORD readBufferTask(LPVOID* param) {
-    while (!gStop) {
-        if (NULL == gppWaveHdr || NULL == gppWaveHdr[0] || NULL == gppWaveHdr[0]->lpData) {
-            Sleep(100);
-            continue;
-        }
-        EnterCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
-        if (gBufferCount <= gReadCount + 1) {
-            LeaveCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
+DWORD wavein_task(LPVOID* param) {
+    while (!gWaveInStop) {
+        EnterCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
+        if (gWaveInBufferCount <= gWaveInReadCount + 1) {
+            LeaveCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
+            Sleep(20);
             continue;
         }
         {
-            LPSTR pBuff = gppWaveHdr[gReadIndex]->lpData;
+            auto pBuff = gppWaveInHdr[gWaveInReadIndex++]->lpData;
+            gWaveInReadIndex %= gWaveInBufferCount;
             gfpReadProc(pBuff);
-            gReadIndex = (gReadIndex + 1) % gBufferCount;
-            gReadCount++;
+            gWaveInReadCount++;
         }
-        LeaveCriticalSection((LPCRITICAL_SECTION)&gcsBufferLock);
+        LeaveCriticalSection((LPCRITICAL_SECTION)&gcsWaveInLock);
     }
-    gThreadStopped = true;
+    gWaveInStopped = true;
     ExitThread(0);
     return 0;
 }
