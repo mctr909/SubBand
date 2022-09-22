@@ -1,8 +1,28 @@
 #include "waveout.h"
+#include <chrono>
+#include <thread>
 #include <stdio.h>
 #include <windows.h>
 #include <mmsystem.h>
 #pragma comment (lib, "winmm.lib")
+
+/******************************************************************************/
+typedef struct WaveOutHandle {
+    HWAVEOUT         handle = NULL;
+    HANDLE           threadHandle;
+    DWORD            threadId;
+    CRITICAL_SECTION lock;
+    WAVEFORMATEX     fmt = { 0 };
+    WAVEHDR** ppHdr = NULL;
+    int bufferCount = 0;
+    int bufferLength = 0;
+    int writeCount = 0;
+    int writeIndex = 0;
+    int addBufferIndex = 0;
+    bool stop = false;
+    bool stopped = true;
+    void (*fpWriteProc)(void*) = NULL;
+};
 
 WaveOutHandle ghWaveOut;
 
@@ -11,33 +31,38 @@ void CALLBACK waveout_proc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD 
 DWORD waveout_task(LPVOID* param);
 
 /******************************************************************************/
-__declspec(dllexport) void waveout_open(
+__declspec(dllexport) void waveout_setconfig(
     int sampleRate,
     int bits,
     int channels,
     int bufferLength,
-    int bufferCount,
-    void (*fpWriteProc)(void*)
+    int bufferCount
 ) {
+    waveout_close();
+    ghWaveOut.bufferLength = bufferLength;
+    ghWaveOut.bufferCount = bufferCount;
+    ghWaveOut.fmt.wFormatTag = 32 == bits ? 3 : 1;
+    ghWaveOut.fmt.nChannels = channels;
+    ghWaveOut.fmt.nSamplesPerSec = (DWORD)sampleRate;
+    ghWaveOut.fmt.wBitsPerSample = (WORD)bits;
+    ghWaveOut.fmt.nBlockAlign = ghWaveOut.fmt.nChannels * ghWaveOut.fmt.wBitsPerSample / 8;
+    ghWaveOut.fmt.nAvgBytesPerSec = ghWaveOut.fmt.nSamplesPerSec * ghWaveOut.fmt.nBlockAlign;
+}
+
+__declspec(dllexport) void waveout_setcallback(void (*fpWriteProc)(void*)) {
+    waveout_close();
+    ghWaveOut.fpWriteProc = fpWriteProc;
+}
+
+__declspec(dllexport) void waveout_open() {
     waveout_close();
     if (NULL == ghWaveOut.fpWriteProc) {
         return;
     }
     //
-    ghWaveOut.bufferLength = bufferLength;
-    ghWaveOut.bufferCount = bufferCount;
-    ghWaveOut.fpWriteProc = fpWriteProc;
-    //
     ghWaveOut.writeCount = 0;
     ghWaveOut.writeIndex = 0;
     ghWaveOut.addBufferIndex = 0;
-    //
-    ghWaveOut.fmt.wFormatTag = 32 == bits ? 3 : 1;
-    ghWaveOut.fmt.nChannels = channels;
-    ghWaveOut.fmt.wBitsPerSample = (WORD)bits;
-    ghWaveOut.fmt.nSamplesPerSec = (DWORD)sampleRate;
-    ghWaveOut.fmt.nBlockAlign = ghWaveOut.fmt.nChannels * ghWaveOut.fmt.wBitsPerSample / 8;
-    ghWaveOut.fmt.nAvgBytesPerSec = ghWaveOut.fmt.nSamplesPerSec * ghWaveOut.fmt.nBlockAlign;
     //
     if (MMSYSERR_NOERROR != waveOutOpen(
         &ghWaveOut.handle,
@@ -85,6 +110,7 @@ __declspec(dllexport) void waveout_close() {
         waveOutUnprepareHeader(ghWaveOut.handle, ghWaveOut.ppHdr[n], sizeof(WAVEHDR));
     }
     waveOutClose(ghWaveOut.handle);
+    ghWaveOut.handle = NULL;
 }
 
 /******************************************************************************/
@@ -125,7 +151,7 @@ DWORD waveout_task(LPVOID* param) {
         EnterCriticalSection((LPCRITICAL_SECTION)&ghWaveOut.lock);
         if (ghWaveOut.bufferCount <= ghWaveOut.writeCount + 1) {
             LeaveCriticalSection((LPCRITICAL_SECTION)&ghWaveOut.lock);
-            Sleep(20);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
             continue;
         }
         {

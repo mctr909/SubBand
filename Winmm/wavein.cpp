@@ -1,8 +1,27 @@
 #include "wavein.h"
+#include <chrono>
+#include <thread>
 #include <stdio.h>
 #include <windows.h>
 #include <mmsystem.h>
 #pragma comment (lib, "winmm.lib")
+
+/******************************************************************************/
+typedef struct WaveInHandle {
+    DWORD            threadId;
+    CRITICAL_SECTION lock;
+    HWAVEIN          handle = NULL;
+    WAVEFORMATEX     fmt = { 0 };
+    WAVEHDR** hdr = NULL;
+    void (*fpReadProc)(void*) = NULL;
+    int bufferCount = 0;
+    int bufferLength = 0;
+    int readCount = 0;
+    int readIndex = 0;
+    int addBufferIndex = 0;
+    bool stop = false;
+    bool stopped = true;
+};
 
 WaveInHandle ghWaveIn;
 
@@ -11,33 +30,38 @@ void CALLBACK wavein_proc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD dw
 DWORD wavein_task(LPVOID* param);
 
 /******************************************************************************/
-__declspec(dllexport) void wavein_open(
+__declspec(dllexport) void wavein_setconfig(
     int sampleRate,
     int bits,
     int channels,
     int bufferLength,
-    int bufferCount,
-    void (*fpReadProc)(void*)
+    int bufferCount
 ) {
     wavein_close();
-    if (NULL == fpReadProc) {
-        return;
-    }
-    //
     ghWaveIn.bufferLength = bufferLength;
     ghWaveIn.bufferCount = bufferCount;
+    ghWaveIn.fmt.wFormatTag = 32 == bits ? 3 : 1;
+    ghWaveIn.fmt.nChannels = channels;
+    ghWaveIn.fmt.nSamplesPerSec = (DWORD)sampleRate;
+    ghWaveIn.fmt.wBitsPerSample = (WORD)bits;
+    ghWaveIn.fmt.nBlockAlign = ghWaveIn.fmt.nChannels * ghWaveIn.fmt.wBitsPerSample / 8;
+    ghWaveIn.fmt.nAvgBytesPerSec = ghWaveIn.fmt.nSamplesPerSec * ghWaveIn.fmt.nBlockAlign;
+}
+
+__declspec(dllexport) void wavein_setcallback(void (*fpReadProc)(void*)) {
+    wavein_close();
     ghWaveIn.fpReadProc = fpReadProc;
+}
+
+__declspec(dllexport) void wavein_open() {
+    wavein_close();
+    if (NULL == ghWaveIn.fpReadProc) {
+        return;
+    }
     //
     ghWaveIn.readCount = 0;
     ghWaveIn.readIndex = 0;
     ghWaveIn.addBufferIndex = 0;
-    //
-    ghWaveIn.fmt.wFormatTag = 32 == bits ? 3 : 1;
-    ghWaveIn.fmt.nChannels = channels;
-    ghWaveIn.fmt.wBitsPerSample = (WORD)bits;
-    ghWaveIn.fmt.nSamplesPerSec = (DWORD)sampleRate;
-    ghWaveIn.fmt.nBlockAlign = ghWaveIn.fmt.nChannels * ghWaveIn.fmt.wBitsPerSample / 8;
-    ghWaveIn.fmt.nAvgBytesPerSec = ghWaveIn.fmt.nSamplesPerSec * ghWaveIn.fmt.nBlockAlign;
     //
     if (MMSYSERR_NOERROR != waveInOpen(
         &ghWaveIn.handle,
@@ -52,14 +76,14 @@ __declspec(dllexport) void wavein_open(
     //
     InitializeCriticalSection((LPCRITICAL_SECTION)&ghWaveIn.lock);
     //
-    ghWaveIn.hdr = (PWAVEHDR*)calloc(bufferCount, sizeof(PWAVEHDR));
-    for (int n = 0; n < bufferCount; ++n) {
+    ghWaveIn.hdr = (PWAVEHDR*)calloc(ghWaveIn.bufferCount, sizeof(PWAVEHDR));
+    for (int n = 0; n < ghWaveIn.bufferCount; ++n) {
         ghWaveIn.hdr[n] = (PWAVEHDR)calloc(1, sizeof(WAVEHDR));
-        ghWaveIn.hdr[n]->dwBufferLength = (DWORD)bufferLength * ghWaveIn.fmt.nBlockAlign;
+        ghWaveIn.hdr[n]->dwBufferLength = (DWORD)ghWaveIn.bufferLength * ghWaveIn.fmt.nBlockAlign;
         ghWaveIn.hdr[n]->dwFlags = WHDR_BEGINLOOP | WHDR_ENDLOOP;
         ghWaveIn.hdr[n]->dwLoops = 0;
         ghWaveIn.hdr[n]->dwUser = 0;
-        ghWaveIn.hdr[n]->lpData = (LPSTR)calloc(bufferLength, ghWaveIn.fmt.nBlockAlign);
+        ghWaveIn.hdr[n]->lpData = (LPSTR)calloc(ghWaveIn.bufferLength, ghWaveIn.fmt.nBlockAlign);
         waveInPrepareHeader(ghWaveIn.handle, ghWaveIn.hdr[n], sizeof(WAVEHDR));
         waveInAddBuffer(ghWaveIn.handle, ghWaveIn.hdr[n], sizeof(WAVEHDR));
     }
@@ -125,7 +149,7 @@ DWORD wavein_task(LPVOID* param) {
         EnterCriticalSection((LPCRITICAL_SECTION)&ghWaveIn.lock);
         if (ghWaveIn.bufferCount <= ghWaveIn.readCount + 1) {
             LeaveCriticalSection((LPCRITICAL_SECTION)&ghWaveIn.lock);
-            Sleep(20);
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
             continue;
         }
         {

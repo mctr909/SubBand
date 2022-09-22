@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace WinmmTest
 {
-    class DllTest
+    class DllTest : IDisposable
     {
         delegate void DCallback(IntPtr buffer);
         DCallback mReadCallback;
@@ -12,27 +12,35 @@ namespace WinmmTest
 
         public short[] ReadBuffer;
         public short[] WriteBuffer;
-        
+
         [DllImport("sound.dll")]
-        private static extern void wavein_open(
+        private static extern void wavein_setconfig(
             int sampleRate,
             int bits,
             int channels,
             int bufferLength,
-            int bufferCount,
-            DCallback readCallback
+            int bufferCount
         );
         [DllImport("sound.dll")]
-        private static extern void waveout_open(
-            int sampleRate,
-            int bits,
-            int channels,
-            int bufferLength,
-            int bufferCount,
-            DCallback writeCallback
-        );
+        private static extern void wavein_setcallback(DCallback readCallback);
+        [DllImport("sound.dll")]
+        private static extern void wavein_open();
         [DllImport("sound.dll")]
         private static extern void wavein_close();
+
+        [DllImport("sound.dll")]
+        private static extern void waveout_setconfig(
+            int sampleRate,
+            int bits,
+            int channels,
+            int bufferLength,
+            int bufferCount
+        );
+        [DllImport("sound.dll")]
+        private static extern void waveout_setcallback(DCallback writeCallback);
+        [DllImport("sound.dll")]
+        private static extern void waveout_open();
+        
         [DllImport("sound.dll")]
         private static extern void waveout_close();
 
@@ -42,16 +50,25 @@ namespace WinmmTest
             WriteBuffer = new short[1024];
         }
 
+        public void Dispose() {
+            wavein_close();
+            waveout_close();
+        }
+
         public void WaveInOpen()
         {
             mReadCallback = new DCallback(Read16);
-            wavein_open(44100, 16, 1, ReadBuffer.Length, 8, mReadCallback);
+            wavein_setconfig(44100, 16, 1, ReadBuffer.Length, 8);
+            wavein_setcallback(mReadCallback);
+            wavein_open();
         }
 
         public void WaveOutOpen()
         {
             mWriteCallback = new DCallback(Write16);
-            waveout_open(44100, 16, 1, WriteBuffer.Length, 8, mWriteCallback);
+            waveout_setconfig(44100, 16, 1, WriteBuffer.Length, 8);
+            waveout_setcallback(mWriteCallback);
+            waveout_open();
         }
 
         public void WaveInClose()
