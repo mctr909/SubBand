@@ -20,13 +20,13 @@ __declspec(dllexport) void waveout_open(
     void (*fpWriteProc)(void*)
 ) {
     waveout_close();
+    if (NULL == ghWaveOut.fpWriteProc) {
+        return;
+    }
     //
     ghWaveOut.bufferLength = bufferLength;
     ghWaveOut.bufferCount = bufferCount;
     ghWaveOut.fpWriteProc = fpWriteProc;
-    if (NULL == ghWaveOut.fpWriteProc) {
-        return;
-    }
     //
     ghWaveOut.writeCount = 0;
     ghWaveOut.writeIndex = 0;
