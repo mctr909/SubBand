@@ -40,8 +40,8 @@ class WaveIn : WaveLib {
                 var window = Math.Pow(Math.E, -t * t);
                 mFftBuff[i] = mInput[i] * window * scale;
             }
-            mAcfL1.ExecN(mFftBuff, Acf);
-            mAcfL1.Spec(Acf, AcfSpec);
+            //mAcfL1.Exec(mFftBuff, Acf);
+            mAcfL1.Spec(mFftBuff, AcfSpec);
             Read = false;
         }
     }

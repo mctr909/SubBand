@@ -37,9 +37,10 @@ namespace SubBandForm {
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(12, 63);
+            this.pictureBox1.Location = new System.Drawing.Point(10, 50);
+            this.pictureBox1.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(151, 50);
+            this.pictureBox1.Size = new System.Drawing.Size(129, 40);
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
             // 
@@ -49,38 +50,41 @@ namespace SubBandForm {
             // 
             // tbWindowWidth
             // 
-            this.tbWindowWidth.Location = new System.Drawing.Point(12, 12);
-            this.tbWindowWidth.Maximum = 100;
+            this.tbWindowWidth.Location = new System.Drawing.Point(10, 10);
+            this.tbWindowWidth.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.tbWindowWidth.Maximum = 24;
             this.tbWindowWidth.Name = "tbWindowWidth";
-            this.tbWindowWidth.Size = new System.Drawing.Size(74, 45);
-            this.tbWindowWidth.SmallChange = 10;
+            this.tbWindowWidth.Size = new System.Drawing.Size(63, 45);
+            this.tbWindowWidth.SmallChange = 3;
             this.tbWindowWidth.TabIndex = 1;
-            this.tbWindowWidth.TickFrequency = 10;
-            this.tbWindowWidth.Value = 30;
+            this.tbWindowWidth.TickFrequency = 3;
+            this.tbWindowWidth.Value = 9;
             this.tbWindowWidth.Scroll += new System.EventHandler(this.tbWindowWidth_Scroll);
             // 
             // tbRange
             // 
-            this.tbRange.Location = new System.Drawing.Point(92, 12);
-            this.tbRange.Maximum = -12;
-            this.tbRange.Minimum = -48;
+            this.tbRange.Location = new System.Drawing.Point(79, 10);
+            this.tbRange.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.tbRange.Maximum = -40;
+            this.tbRange.Minimum = -100;
             this.tbRange.Name = "tbRange";
-            this.tbRange.Size = new System.Drawing.Size(74, 45);
-            this.tbRange.SmallChange = 6;
+            this.tbRange.Size = new System.Drawing.Size(63, 45);
+            this.tbRange.SmallChange = 5;
             this.tbRange.TabIndex = 2;
-            this.tbRange.TickFrequency = 12;
-            this.tbRange.Value = -24;
+            this.tbRange.TickFrequency = 10;
+            this.tbRange.Value = -60;
             this.tbRange.Scroll += new System.EventHandler(this.tbRange_Scroll);
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(175, 138);
+            this.ClientSize = new System.Drawing.Size(150, 110);
             this.Controls.Add(this.tbRange);
             this.Controls.Add(this.tbWindowWidth);
             this.Controls.Add(this.pictureBox1);
-            this.MinimumSize = new System.Drawing.Size(128, 128);
+            this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.MinimumSize = new System.Drawing.Size(112, 110);
             this.Name = "Form1";
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.Form1_Load);
